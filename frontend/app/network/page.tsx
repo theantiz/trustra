@@ -2,12 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { getAbuseFlags } from "@/lib/api";
-import { AbuseFlag } from "@/lib/types";
+import { getNetwork } from "@/lib/api";
+import { NetworkCounterparty } from "@/lib/types";
 
-export default function AbusePage() {
+export default function NetworkPage() {
   const [userId, setUserId] = useState("");
-  const [items, setItems] = useState<AbuseFlag[]>([]);
+  const [items, setItems] = useState<NetworkCounterparty[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -16,11 +16,11 @@ export default function AbusePage() {
     setLoading(true);
     setError("");
     try {
-      const data = await getAbuseFlags(userId.trim());
+      const data = await getNetwork(userId.trim());
       setItems(data);
     } catch {
-      setError("Unable to fetch abuse flags");
       setItems([]);
+      setError("Unable to fetch network trust data");
     } finally {
       setLoading(false);
     }
@@ -29,31 +29,31 @@ export default function AbusePage() {
   return (
     <main className="min-h-screen px-6 py-10">
       <div className="mx-auto flex w-full max-w-[600px] flex-col items-center">
-        <h1 className="mb-6 text-center text-2xl font-semibold">Abuse Flags</h1>
+        <h1 className="mb-6 text-center text-2xl font-semibold">Network Trust</h1>
 
         <section className="w-full rounded-xl border border-trust-border bg-white p-8">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
-            Lookup User Flags
+            Lookup Counterparties
           </h2>
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex gap-3">
             <input
               value={userId}
               onChange={(e) => setUserId(e.target.value)}
               placeholder="User ID"
-              className="flex-1 rounded-lg border border-trust-border px-4 py-3 text-sm outline-none focus:border-gray-400"
+              className="w-full rounded-lg border border-trust-border px-4 py-3 text-sm outline-none focus:border-gray-400"
             />
             <button
               type="button"
               onClick={onFetch}
               disabled={loading}
-              className="rounded-lg border border-trust-border px-5 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50 disabled:opacity-70"
+              className="rounded-lg border border-trust-border px-4 py-3 text-sm font-medium hover:bg-gray-50 disabled:opacity-60"
             >
-              Fetch Flags
+              Fetch
             </button>
           </div>
         </section>
 
-        {loading && <p className="mt-4 text-sm text-trust-muted">Loading...</p>}
+        {!!loading && <p className="mt-4 text-sm text-trust-muted">Loading...</p>}
         {!!error && <p className="mt-4 text-sm text-red-700">{error}</p>}
 
         <section className="mt-6 w-full rounded-xl border border-trust-border bg-white p-8">
@@ -62,17 +62,16 @@ export default function AbusePage() {
           </h2>
           <div className="space-y-3">
             {items.length === 0 && (
-              <p className="text-sm text-trust-muted">No abuse flags found.</p>
+              <p className="text-sm text-trust-muted">No network data found.</p>
             )}
-            {items.map((item) => (
+            {items.map((item, index) => (
               <div
-                key={item.id}
+                key={`${item.counterpartyId ?? item.userId ?? "user"}-${index}`}
                 className="rounded-lg border border-trust-border p-3 text-sm"
               >
-                <p>Flag: {item.flagType}</p>
-                <p>Severity: {item.severity}</p>
-                <p>Details: {item.details}</p>
-                <p>Created: {new Date(item.createdAt).toLocaleString()}</p>
+                <p>User: {item.counterpartyId ?? item.userId ?? "-"}</p>
+                <p>Score: {item.trustScore ?? item.score ?? "-"}</p>
+                <p>Level: {item.level ?? "-"}</p>
               </div>
             ))}
           </div>
@@ -83,16 +82,16 @@ export default function AbusePage() {
             Home
           </Link>
           <Link href="/simulate" className="text-gray-600 underline underline-offset-4">
-            Simulation
-          </Link>
-          <Link href="/network" className="text-gray-600 underline underline-offset-4">
-            Network
+            Simulate
           </Link>
           <Link href="/transactions" className="text-gray-600 underline underline-offset-4">
             Transactions
           </Link>
           <Link href="/feedback" className="text-gray-600 underline underline-offset-4">
             Feedback
+          </Link>
+          <Link href="/abuse" className="text-gray-600 underline underline-offset-4">
+            Abuse
           </Link>
         </div>
       </div>

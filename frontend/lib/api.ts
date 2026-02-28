@@ -1,4 +1,11 @@
-import { AbuseFlag, Feedback, Transaction, TrustScoreResponse } from "@/lib/types";
+import {
+  AbuseFlag,
+  Feedback,
+  NetworkCounterparty,
+  SimStats,
+  Transaction,
+  TrustScoreResponse
+} from "@/lib/types";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL?.replace(/\/$/, "") ||
@@ -17,6 +24,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     const text = await response.text();
     throw new Error(text || `Request failed: ${response.status}`);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (response.status === 204 || !contentType.includes("application/json")) {
+    return undefined as T;
   }
 
   return (await response.json()) as T;
@@ -65,4 +77,56 @@ export async function createFeedback(input: {
 
 export async function getAbuseFlags(userId: string): Promise<AbuseFlag[]> {
   return request<AbuseFlag[]>(`/api/abuse/${encodeURIComponent(userId)}`);
+}
+
+export async function recalculateAllTrust(): Promise<void> {
+  return request<void>("/api/trust/recalculate-all", { method: "POST" });
+}
+
+export async function clearTrustCache(userId: string): Promise<void> {
+  return request<void>(`/api/trust/${encodeURIComponent(userId)}/cache`, {
+    method: "DELETE"
+  });
+}
+
+export async function getDbHealth(): Promise<unknown> {
+  return request<unknown>("/api/health/db");
+}
+
+export async function simInit(users: number): Promise<unknown> {
+  return request<unknown>("/api/sim/init", {
+    method: "POST",
+    body: JSON.stringify({ users })
+  });
+}
+
+export async function simNormal(steps: number): Promise<unknown> {
+  return request<unknown>("/api/sim/normal", {
+    method: "POST",
+    body: JSON.stringify({ steps })
+  });
+}
+
+export async function simMalicious(
+  clusterSize: number,
+  steps: number
+): Promise<unknown> {
+  return request<unknown>("/api/sim/malicious", {
+    method: "POST",
+    body: JSON.stringify({ clusterSize, steps })
+  });
+}
+
+export async function simSpike(userId: string): Promise<unknown> {
+  return request<unknown>(`/api/sim/spike/${encodeURIComponent(userId)}`, {
+    method: "POST"
+  });
+}
+
+export async function getSimStats(): Promise<SimStats> {
+  return request<SimStats>("/api/sim/stats");
+}
+
+export async function getNetwork(userId: string): Promise<NetworkCounterparty[]> {
+  return request<NetworkCounterparty[]>(`/api/network/${encodeURIComponent(userId)}`);
 }

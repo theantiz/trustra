@@ -42,3 +42,19 @@ export type AbuseFlag = {
   details: string;
   createdAt: string;
 };
+
+export type SimStats = {
+  totalUsers: number;
+  avgTrustScore: number;
+  flaggedUsersCount: number;
+  highestTrustUser: string;
+  lowestTrustUser: string;
+};
+
+export type NetworkCounterparty = {
+  counterpartyId?: string;
+  userId?: string;
+  trustScore?: number;
+  score?: number;
+  level?: string;
+};

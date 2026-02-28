@@ -117,6 +117,12 @@ export default function FeedbackPage() {
           <Link href="/" className="text-gray-600 underline underline-offset-4">
             Home
           </Link>
+          <Link href="/simulate" className="text-gray-600 underline underline-offset-4">
+            Simulation
+          </Link>
+          <Link href="/network" className="text-gray-600 underline underline-offset-4">
+            Network
+          </Link>
           <Link href="/transactions" className="text-gray-600 underline underline-offset-4">
             Transactions
           </Link>
