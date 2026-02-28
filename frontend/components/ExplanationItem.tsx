@@ -1,4 +1,4 @@
-import { Explanation } from "@/lib/trust";
+import { Explanation } from "@/lib/types";
 
 type ExplanationItemProps = {
   item: Explanation;
