@@ -29,6 +29,7 @@ import xyz.antiz.Trustra.repo.TrustScoreRepo;
 public class SimulationService {
 
 	private static final int MIN_USERS = 20;
+	private static final int DEFAULT_MOCK_USER_COUNT = 100;
 	private static final List<MockUserSeed> DEFAULT_MOCK_USERS = Arrays.asList(
 		new MockUserSeed("alice", 82.0, 96.0, 1.0, 4.9, 2),
 		new MockUserSeed("bob", 76.0, 91.0, 2.0, 4.6, 3),
@@ -88,6 +89,11 @@ public class SimulationService {
 				mockUserSeed.averageRating(),
 				Instant.now().minus(mockUserSeed.daysSinceActivity(), ChronoUnit.DAYS)
 			);
+		}
+		long currentUsers = trustScoreRepo.count();
+		int remainingUsers = Math.max(0, DEFAULT_MOCK_USER_COUNT - (int) currentUsers);
+		if (remainingUsers > 0) {
+			initializeUsers(remainingUsers);
 		}
 	}
 
@@ -261,7 +267,6 @@ public class SimulationService {
 		trustScore.setAverageRating(averageRating);
 		trustScore.setLastActivityAt(lastActivityAt);
 		trustScoreRepo.save(trustScore);
-		trustEngineService.evictCache(userId);
 	}
 
 	private List<String> getAllUserIds() {

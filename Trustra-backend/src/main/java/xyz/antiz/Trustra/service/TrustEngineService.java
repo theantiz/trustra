@@ -9,10 +9,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import org.springframework.beans.factory.ObjectProvider;
-import org.springframework.cache.annotation.CacheEvict;
-import org.springframework.cache.annotation.CachePut;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,7 +38,6 @@ public class TrustEngineService {
 	private final TrustExplanationRepo trustExplanationRepo;
 	private final AbuseDetectionService abuseDetectionService;
 	private final AbuseFlagRepo abuseFlagRepo;
-	private final ObjectProvider<TrustEngineService> selfProvider;
 
 	public TrustEngineService(
 		TransactionRepo transactionRepo,
@@ -50,8 +45,7 @@ public class TrustEngineService {
 		TrustScoreRepo trustScoreRepo,
 		TrustExplanationRepo trustExplanationRepo,
 		AbuseDetectionService abuseDetectionService,
-		AbuseFlagRepo abuseFlagRepo,
-		ObjectProvider<TrustEngineService> selfProvider
+		AbuseFlagRepo abuseFlagRepo
 	) {
 		this.transactionRepo = transactionRepo;
 		this.feedbackRepo = feedbackRepo;
@@ -59,31 +53,32 @@ public class TrustEngineService {
 		this.trustExplanationRepo = trustExplanationRepo;
 		this.abuseDetectionService = abuseDetectionService;
 		this.abuseFlagRepo = abuseFlagRepo;
-		this.selfProvider = selfProvider;
 	}
 
-	@Cacheable(cacheNames = "trust", key = "#userId")
 	public TrustScore get(String userId) {
 		return trustScoreRepo.findByUserId(userId).orElseGet(() -> recalculate(userId));
 	}
 
+	public List<TrustExplanationView> getExplanations(String userId) {
+		return trustExplanationRepo.findByUserIdOrderByCalculatedAtDescIdDesc(userId).stream()
+			.map(explanation -> new TrustExplanationView(
+				explanation.getFactor(),
+				round(defaultDouble(explanation.getMetricValue())),
+				round(defaultDouble(explanation.getContribution())),
+				explanation.getExplanation(),
+				explanation.getCalculatedAt()
+			))
+			.toList();
+	}
+
 	@Transactional
-	@CacheEvict(cacheNames = "trust", key = "#userId")
 	public void touchActivity(String userId, Instant activityAt) {
 		TrustScore trustScore = trustScoreRepo.findByUserId(userId).orElseGet(TrustScore::new);
 		trustScore.setUserId(userId);
-		if (trustScore.getScore() == null) {
-			trustScore.setScore(0.0);
-		}
-		if (trustScore.getSuccessRate() == null) {
-			trustScore.setSuccessRate(0.0);
-		}
-		if (trustScore.getDisputeRate() == null) {
-			trustScore.setDisputeRate(0.0);
-		}
-		if (trustScore.getAverageRating() == null) {
-			trustScore.setAverageRating(0.0);
-		}
+		trustScore.setScore(defaultDouble(trustScore.getScore()));
+		trustScore.setSuccessRate(defaultDouble(trustScore.getSuccessRate()));
+		trustScore.setDisputeRate(defaultDouble(trustScore.getDisputeRate()));
+		trustScore.setAverageRating(defaultDouble(trustScore.getAverageRating()));
 		if (trustScore.getLastActivityAt() == null || activityAt.isAfter(trustScore.getLastActivityAt())) {
 			trustScore.setLastActivityAt(activityAt);
 		}
@@ -92,33 +87,46 @@ public class TrustEngineService {
 
 	@Transactional
 	public List<TrustScore> recalculateAll() {
-		TrustEngineService self = selfProvider.getObject();
 		return trustScoreRepo.findAll().stream()
-			.map(trustScore -> self.recalculate(trustScore.getUserId()))
+			.map(trustScore -> recalculate(trustScore.getUserId()))
 			.toList();
 	}
 
 	@Transactional
-	@CachePut(cacheNames = "trust", key = "#userId")
 	public TrustScore recalculate(String userId) {
 		long totalTransactions = transactionRepo.countByReceiverId(userId);
 		long successfulTransactions = transactionRepo.countByReceiverIdAndStatus(userId, "SUCCESS");
 		long disputedTransactions = transactionRepo.countByReceiverIdAndStatus(userId, "DISPUTE");
 		long totalFeedback = feedbackRepo.countByToUserId(userId);
-		double averageRating = totalFeedback == 0 ? 0.0 : feedbackRepo.averageRatingByToUserId(userId);
+		double calculatedAverageRating = totalFeedback == 0 ? 0.0 : feedbackRepo.averageRatingByToUserId(userId);
 
-		double successRate = totalTransactions == 0 ? 0.0 : ((double) successfulTransactions / totalTransactions) * 100.0;
-		double disputeRate = totalTransactions == 0 ? 0.0 : ((double) disputedTransactions / totalTransactions) * 100.0;
+		TrustScore trustScore = trustScoreRepo.findByUserId(userId).orElseGet(TrustScore::new);
+		trustScore.setUserId(userId);
+		double existingScore = defaultDouble(trustScore.getScore());
+		double existingSuccessRate = defaultDouble(trustScore.getSuccessRate());
+		double existingDisputeRate = defaultDouble(trustScore.getDisputeRate());
+		double existingAverageRating = defaultDouble(trustScore.getAverageRating());
+
+		List<AbuseFlag> abuseFlags = abuseDetectionService.detect(userId);
+		boolean preserveBaseline = shouldPreserveBaseline(trustScore, totalTransactions, totalFeedback, abuseFlags);
+
+		double successRate = preserveBaseline
+			? existingSuccessRate
+			: (totalTransactions == 0 ? 0.0 : ((double) successfulTransactions / totalTransactions) * 100.0);
+		double disputeRate = preserveBaseline
+			? existingDisputeRate
+			: (totalTransactions == 0 ? 0.0 : ((double) disputedTransactions / totalTransactions) * 100.0);
+		double averageRating = preserveBaseline ? existingAverageRating : calculatedAverageRating;
 
 		double successContribution = totalTransactions == 0 ? 0.0 : (successRate / 100.0) * SUCCESS_WEIGHT;
 		double disputeContribution = totalTransactions == 0 ? 0.0 : ((100.0 - disputeRate) / 100.0) * DISPUTE_WEIGHT;
 		double feedbackContribution = totalFeedback == 0 ? 0.0 : (averageRating / MAX_FEEDBACK_RATING) * FEEDBACK_WEIGHT;
-		double baseScore = successContribution + disputeContribution + feedbackContribution;
+		double behavioralScore = preserveBaseline
+			? existingScore
+			: successContribution + disputeContribution + feedbackContribution;
 		NetworkTrustSnapshot networkTrustSnapshot = buildNetworkTrustSnapshot(userId);
-		double networkImpact = networkTrustSnapshot.impact();
+		double networkImpact = preserveBaseline ? 0.0 : networkTrustSnapshot.impact();
 
-		TrustScore trustScore = trustScoreRepo.findByUserId(userId).orElseGet(TrustScore::new);
-		trustScore.setUserId(userId);
 		trustScore.setSuccessRate(round(successRate));
 		trustScore.setDisputeRate(round(disputeRate));
 		trustScore.setAverageRating(round(averageRating));
@@ -133,9 +141,9 @@ public class TrustEngineService {
 			}
 		}
 
-		List<AbuseFlag> abuseFlags = abuseDetectionService.detect(userId);
 		double totalPenalty = abuseFlags.stream().mapToDouble(this::penaltyFor).sum();
-		trustScore.setScore(round(clamp(baseScore + networkImpact - totalPenalty - inactivityPenalty)));
+		double finalScore = behavioralScore + networkImpact - totalPenalty - inactivityPenalty;
+		trustScore.setScore(round(clamp(finalScore)));
 
 		TrustScore savedTrustScore = trustScoreRepo.save(trustScore);
 		trustExplanationRepo.deleteByUserId(userId);
@@ -145,63 +153,76 @@ public class TrustEngineService {
 		}
 
 		List<TrustExplanation> explanations = new ArrayList<>();
-		explanations.add(
-			buildExplanation(
-				savedTrustScore,
-				userId,
-				"SUCCESS_RATE",
-				round(successRate),
-				round(successContribution),
-				String.format(
-					"Successful transactions: %d of %d. Higher success rates increase trust.",
-					successfulTransactions,
-					totalTransactions
+		if (preserveBaseline) {
+			explanations.add(
+				buildExplanation(
+					savedTrustScore,
+					userId,
+					"BASELINE_SCORE",
+					round(existingScore),
+					round(existingScore),
+					"Baseline demo trust retained until enough real activity exists for recalculation."
 				)
-			)
-		);
-		explanations.add(
-			buildExplanation(
-				savedTrustScore,
-				userId,
-				"DISPUTE_RATE",
-				round(disputeRate),
-				round(disputeContribution),
-				String.format(
-					"Disputed transactions: %d of %d. Lower dispute rates preserve more trust points.",
-					disputedTransactions,
-					totalTransactions
+			);
+		} else {
+			explanations.add(
+				buildExplanation(
+					savedTrustScore,
+					userId,
+					"SUCCESS_RATE",
+					round(successRate),
+					round(successContribution),
+					String.format(
+						"Successful transactions: %d of %d. Higher success rates increase trust.",
+						successfulTransactions,
+						totalTransactions
+					)
 				)
-			)
-		);
-		explanations.add(
-			buildExplanation(
-				savedTrustScore,
-				userId,
-				"FEEDBACK_RATING",
-				round(averageRating),
-				round(feedbackContribution),
-				String.format(
-					"Average feedback rating is %.2f out of %.0f based on %d feedback entries.",
-					averageRating,
-					MAX_FEEDBACK_RATING,
-					totalFeedback
+			);
+			explanations.add(
+				buildExplanation(
+					savedTrustScore,
+					userId,
+					"DISPUTE_RATE",
+					round(disputeRate),
+					round(disputeContribution),
+					String.format(
+						"Disputed transactions: %d of %d. Lower dispute rates preserve more trust points.",
+						disputedTransactions,
+						totalTransactions
+					)
 				)
-			)
-		);
-		explanations.add(
-			buildExplanation(
-				savedTrustScore,
-				userId,
-				"NETWORK_TRUST",
-				round(networkTrustSnapshot.averagePartnerScore()),
-				round(networkImpact),
-				String.format(
-					"Network trust influence: Avg partner score %.2f across %d counterparties.",
-					networkTrustSnapshot.averagePartnerScore(),
-					networkTrustSnapshot.counterparties().size()
+			);
+			explanations.add(
+				buildExplanation(
+					savedTrustScore,
+					userId,
+					"FEEDBACK_RATING",
+					round(averageRating),
+					round(feedbackContribution),
+					String.format(
+						"Average feedback rating is %.2f out of %.0f based on %d feedback entries.",
+						averageRating,
+						MAX_FEEDBACK_RATING,
+						totalFeedback
+					)
 				)
-			)
-		);
+			);
+			explanations.add(
+				buildExplanation(
+					savedTrustScore,
+					userId,
+					"NETWORK_TRUST",
+					round(networkTrustSnapshot.averagePartnerScore()),
+					round(networkImpact),
+					String.format(
+						"Network trust influence: Avg partner score %.2f across %d counterparties.",
+						networkTrustSnapshot.averagePartnerScore(),
+						networkTrustSnapshot.counterparties().size()
+					)
+				)
+			);
+		}
 		for (AbuseFlag abuseFlag : abuseFlags) {
 			double penalty = penaltyFor(abuseFlag);
 			explanations.add(
@@ -237,16 +258,25 @@ public class TrustEngineService {
 		return savedTrustScore;
 	}
 
-	@CacheEvict(cacheNames = "trust", key = "#userId")
-	public void evictCache(String userId) {
-	}
-
 	public double calculateNetworkScore(String userId) {
 		return buildNetworkTrustSnapshot(userId).networkScore();
 	}
 
 	public List<NetworkCounterpartyView> getNetworkView(String userId) {
 		return buildNetworkTrustSnapshot(userId).counterparties();
+	}
+
+	private boolean shouldPreserveBaseline(
+		TrustScore trustScore,
+		long totalTransactions,
+		long totalFeedback,
+		List<AbuseFlag> abuseFlags
+	) {
+		return trustScore.getId() != null
+			&& totalTransactions == 0
+			&& totalFeedback == 0
+			&& abuseFlags.isEmpty()
+			&& trustScore.getScore() != null;
 	}
 
 	private NetworkTrustSnapshot buildNetworkTrustSnapshot(String userId) {
@@ -324,11 +354,24 @@ public class TrustEngineService {
 		return Math.max(0.0, Math.min(1.0, score));
 	}
 
+	private double defaultDouble(Double value) {
+		return value == null ? 0.0 : value;
+	}
+
 	private double round(double value) {
 		return Math.round(value * 100.0) / 100.0;
 	}
 
 	public record NetworkCounterpartyView(String userId, double trustScore) {
+	}
+
+	public record TrustExplanationView(
+		String factor,
+		double metricValue,
+		double contribution,
+		String explanation,
+		Instant calculatedAt
+	) {
 	}
 
 	private record NetworkTrustSnapshot(

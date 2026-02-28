@@ -2,7 +2,6 @@ package xyz.antiz.Trustra.controller;
 
 import java.util.List;
 
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -11,6 +10,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import xyz.antiz.Trustra.entity.TrustScore;
 import xyz.antiz.Trustra.service.TrustEngineService;
+import xyz.antiz.Trustra.service.TrustEngineService.TrustExplanationView;
 
 @RestController
 @RequestMapping("/api/trust")
@@ -27,6 +27,11 @@ public class TrustController {
 		return trustEngineService.get(userId);
 	}
 
+	@GetMapping("/{userId}/explanations")
+	public List<TrustExplanationView> getExplanations(@PathVariable String userId) {
+		return trustEngineService.getExplanations(userId);
+	}
+
 	@PostMapping("/{userId}/recalculate")
 	public TrustScore recalculate(@PathVariable String userId) {
 		return trustEngineService.recalculate(userId);
@@ -35,10 +40,5 @@ public class TrustController {
 	@PostMapping("/recalculate-all")
 	public List<TrustScore> recalculateAll() {
 		return trustEngineService.recalculateAll();
-	}
-
-	@DeleteMapping("/{userId}/cache")
-	public void evictCache(@PathVariable String userId) {
-		trustEngineService.evictCache(userId);
 	}
 }
