@@ -1,28 +1,19 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import SearchBar from "@/components/SearchBar";
 import TrustCard from "@/components/TrustCard";
-import {
-  getTrust,
-  getTrustExplanations,
-  recalculateAllTrust,
-  recalculateTrust
-} from "@/lib/api";
+import { getTrust, getTrustExplanations } from "@/lib/api";
 import { Explanation, TrustScoreResponse } from "@/lib/types";
-import Link from "next/link";
 
 export default function HomePage() {
   const [userId, setUserId] = useState("");
-  const [activeUserId, setActiveUserId] = useState("");
   const [result, setResult] = useState<TrustScoreResponse | null>(null);
   const [explanations, setExplanations] = useState<Explanation[]>([]);
   const [loading, setLoading] = useState(false);
-  const [recalculating, setRecalculating] = useState(false);
-  const [bulkLoading, setBulkLoading] = useState(false);
   const [showForm, setShowForm] = useState(true);
   const [error, setError] = useState("");
-  const [message, setMessage] = useState("");
 
   const checkTrust = async () => {
     const trimmed = userId.trim();
@@ -30,14 +21,12 @@ export default function HomePage() {
 
     setLoading(true);
     setError("");
-    setMessage("");
 
     try {
       const payload = await getTrust(trimmed);
       const explanationPayload = await getTrustExplanations(trimmed);
       setResult(payload);
       setExplanations(explanationPayload);
-      setActiveUserId(trimmed);
       setUserId("");
       setShowForm(false);
     } catch {
@@ -46,46 +35,6 @@ export default function HomePage() {
       setError("User not found or insufficient data");
     } finally {
       setLoading(false);
-    }
-  };
-
-  const runRecalculation = async () => {
-    const trimmed = activeUserId || userId.trim();
-    if (!trimmed) return;
-
-    setRecalculating(true);
-    setError("");
-    setMessage("");
-    try {
-      const payload = await recalculateTrust(trimmed);
-      const explanationPayload = await getTrustExplanations(trimmed);
-      setResult(payload);
-      setExplanations(explanationPayload);
-      setMessage("Trust recalculated");
-    } catch {
-      setError("Unable to recalculate trust score");
-    } finally {
-      setRecalculating(false);
-    }
-  };
-
-  const runRecalculateAll = async () => {
-    setBulkLoading(true);
-    setError("");
-    setMessage("");
-    try {
-      await recalculateAllTrust();
-      setMessage("Recalculation triggered for all users");
-      if (userId.trim()) {
-        const payload = await getTrust(userId.trim());
-        const explanationPayload = await getTrustExplanations(userId.trim());
-        setResult(payload);
-        setExplanations(explanationPayload);
-      }
-    } catch {
-      setError("Unable to trigger recalculation for all users");
-    } finally {
-      setBulkLoading(false);
     }
   };
 
@@ -107,25 +56,16 @@ export default function HomePage() {
             loading={loading}
           />
         )}
+
         {!showForm && result && (
           <div className="mt-5 flex flex-wrap justify-center gap-3">
-            <button
-              type="button"
-              onClick={runRecalculation}
-              disabled={recalculating}
-              className="rounded-lg border border-trust-border px-5 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {recalculating ? "Calculating trust..." : "Recalculate Trust"}
-            </button>
             <button
               type="button"
               onClick={() => {
                 setShowForm(true);
                 setResult(null);
                 setExplanations([]);
-                setActiveUserId("");
                 setError("");
-                setMessage("");
               }}
               className="rounded-lg border border-trust-border px-5 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50"
             >
@@ -134,27 +74,9 @@ export default function HomePage() {
           </div>
         )}
 
-        <div className="mt-5 flex w-full flex-wrap justify-center gap-3 text-xs">
-          <button
-            type="button"
-            onClick={runRecalculateAll}
-            disabled={bulkLoading}
-            className="rounded-lg border border-trust-border px-3 py-2 text-gray-800 hover:bg-gray-50 disabled:opacity-60"
-          >
-            Recalculate All
-          </button>
-        </div>
-
-        {(loading || recalculating || bulkLoading) && (
-          <p className="mt-4 text-sm text-trust-muted">Calculating trust...</p>
-        )}
-        {!loading && !recalculating && error && (
-          <p className="mt-4 text-sm text-red-700">{error}</p>
-        )}
-        {!loading && !recalculating && !bulkLoading && !!message && (
-          <p className="mt-4 text-sm text-green-700">{message}</p>
-        )}
-        {!loading && !recalculating && result && !showForm && (
+        {loading && <p className="mt-4 text-sm text-trust-muted">Calculating trust...</p>}
+        {!loading && error && <p className="mt-4 text-sm text-red-700">{error}</p>}
+        {!loading && result && !showForm && (
           <TrustCard result={result} explanations={explanations} />
         )}
 

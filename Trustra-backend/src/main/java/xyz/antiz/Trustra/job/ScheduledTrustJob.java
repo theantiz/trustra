@@ -16,8 +16,9 @@ public class ScheduledTrustJob {
 		this.trustEngineService = trustEngineService;
 	}
 
-	@Scheduled(fixedRateString = "${trustra.scheduling.recalculation.fixed-rate-ms:3600000}")
+	@Scheduled(fixedRateString = "${trustra.scheduling.recalculation.fixed-rate-ms:5000}")
 	public void recalculateAllTrustScores() {
 		trustEngineService.recalculateAll();
 	}
 }
+

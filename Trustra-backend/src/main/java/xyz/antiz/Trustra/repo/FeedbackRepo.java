@@ -13,6 +13,8 @@ public interface FeedbackRepo extends JpaRepository<Feedback, UUID> {
 
 	long countByToUserId(String toUserId);
 
+	long countByToUserIdAndType(String toUserId, String type);
+
 	@Query("""
 		select count(f)
 		from Feedback f

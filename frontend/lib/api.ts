@@ -39,16 +39,15 @@ export async function getTrust(userId: string): Promise<TrustScoreResponse> {
   return request<TrustScoreResponse>(`/api/trust/${encodeURIComponent(userId)}`);
 }
 
-export async function getTrustExplanations(userId: string): Promise<Explanation[]> {
-  return request<Explanation[]>(
-    `/api/trust/${encodeURIComponent(userId)}/explanations`
+export async function getReceiverTrust(receiverId: string): Promise<TrustScoreResponse> {
+  return request<TrustScoreResponse>(
+    `/api/transactions/receiver-trust?receiverId=${encodeURIComponent(receiverId)}`
   );
 }
 
-export async function recalculateTrust(userId: string): Promise<TrustScoreResponse> {
-  return request<TrustScoreResponse>(
-    `/api/trust/${encodeURIComponent(userId)}/recalculate`,
-    { method: "POST" }
+export async function getTrustExplanations(userId: string): Promise<Explanation[]> {
+  return request<Explanation[]>(
+    `/api/trust/${encodeURIComponent(userId)}/explanations`
   );
 }
 
@@ -84,10 +83,6 @@ export async function createFeedback(input: {
 
 export async function getAbuseFlags(userId: string): Promise<AbuseFlag[]> {
   return request<AbuseFlag[]>(`/api/abuse/${encodeURIComponent(userId)}`);
-}
-
-export async function recalculateAllTrust(): Promise<void> {
-  return request<void>("/api/trust/recalculate-all", { method: "POST" });
 }
 
 export async function simInit(users: number): Promise<SimStats> {
@@ -127,3 +122,4 @@ export async function getSimStats(): Promise<SimStats> {
 export async function getNetwork(userId: string): Promise<NetworkCounterparty[]> {
   return request<NetworkCounterparty[]>(`/api/network/${encodeURIComponent(userId)}`);
 }
+

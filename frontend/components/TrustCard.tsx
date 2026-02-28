@@ -28,33 +28,33 @@ export default function TrustCard({ result, explanations = [] }: TrustCardProps)
 
   return (
     <section className="mt-10 w-full rounded-2xl border border-trust-border bg-white p-10">
-      <div className="grid gap-8 md:grid-cols-[1.3fr_1fr]">
+      <div className="grid gap-8 md:grid-cols-[1fr_1fr] md:items-start">
         <div>
           <p className="text-sm text-trust-muted">Trust Score</p>
-          <p className="mt-2 text-6xl font-semibold text-gray-900">{result.score}</p>
-          <div className="mt-4 flex">
+          <p className="mt-2 text-6xl font-semibold leading-none text-gray-900">{result.score}</p>
+          <div className="mt-5 flex">
             <StatusBadge level={level} />
           </div>
-          <p className="mt-3 text-xs text-trust-muted">Calculated: {formattedDate}</p>
+          <p className="mt-4 text-xs text-trust-muted">Calculated: {formattedDate}</p>
           <p className="mt-1 text-xs text-trust-muted">Last activity: {activityDate}</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 text-center">
-          <div className="rounded-xl bg-gray-50 p-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <div className="rounded-xl bg-gray-50 px-5 py-4">
             <p className="text-xs uppercase tracking-wide text-trust-muted">Success</p>
-            <p className="mt-2 text-2xl font-semibold text-gray-900">
+            <p className="mt-3 text-4xl font-semibold leading-none text-gray-900">
               {result.successRate}%
             </p>
           </div>
-          <div className="rounded-xl bg-gray-50 p-4">
+          <div className="rounded-xl bg-gray-50 px-5 py-4">
             <p className="text-xs uppercase tracking-wide text-trust-muted">Disputes</p>
-            <p className="mt-2 text-2xl font-semibold text-gray-900">
+            <p className="mt-3 text-4xl font-semibold leading-none text-gray-900">
               {result.disputeRate}%
             </p>
           </div>
-          <div className="rounded-xl bg-gray-50 p-4">
+          <div className="rounded-xl bg-gray-50 px-5 py-4">
             <p className="text-xs uppercase tracking-wide text-trust-muted">Rating</p>
-            <p className="mt-2 text-2xl font-semibold text-gray-900">
+            <p className="mt-3 text-4xl font-semibold leading-none text-gray-900">
               {result.averageRating}
             </p>
           </div>

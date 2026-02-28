@@ -31,6 +31,8 @@ public class TrustEngineService {
 	private static final double FEEDBACK_WEIGHT = 20.0;
 	private static final double MAX_FEEDBACK_RATING = 5.0;
 	private static final double MAX_INACTIVITY_PENALTY = 20.0;
+	private static final double NEGATIVE_FEEDBACK_PENALTY = 2.0;
+	private static final double SCAM_REPORT_PENALTY = 5.0;
 
 	private final TransactionRepo transactionRepo;
 	private final FeedbackRepo feedbackRepo;
@@ -99,6 +101,8 @@ public class TrustEngineService {
 		long disputedTransactions = transactionRepo.countByReceiverIdAndStatus(userId, "DISPUTE");
 		long totalFeedback = feedbackRepo.countByToUserId(userId);
 		double calculatedAverageRating = totalFeedback == 0 ? 0.0 : feedbackRepo.averageRatingByToUserId(userId);
+		long negativeFeedbackCount = feedbackRepo.countByToUserIdAndType(userId, "NEGATIVE");
+		long scamReportCount = feedbackRepo.countByToUserIdAndType(userId, "SCAM_REPORT");
 
 		TrustScore trustScore = trustScoreRepo.findByUserId(userId).orElseGet(TrustScore::new);
 		trustScore.setUserId(userId);
@@ -121,9 +125,11 @@ public class TrustEngineService {
 		double successContribution = totalTransactions == 0 ? 0.0 : (successRate / 100.0) * SUCCESS_WEIGHT;
 		double disputeContribution = totalTransactions == 0 ? 0.0 : ((100.0 - disputeRate) / 100.0) * DISPUTE_WEIGHT;
 		double feedbackContribution = totalFeedback == 0 ? 0.0 : (averageRating / MAX_FEEDBACK_RATING) * FEEDBACK_WEIGHT;
+		double negativeFeedbackPenalty = negativeFeedbackCount * NEGATIVE_FEEDBACK_PENALTY;
+		double scamReportPenalty = scamReportCount * SCAM_REPORT_PENALTY;
 		double behavioralScore = preserveBaseline
 			? existingScore
-			: successContribution + disputeContribution + feedbackContribution;
+			: successContribution + disputeContribution + feedbackContribution - negativeFeedbackPenalty - scamReportPenalty;
 		NetworkTrustSnapshot networkTrustSnapshot = buildNetworkTrustSnapshot(userId);
 		double networkImpact = preserveBaseline ? 0.0 : networkTrustSnapshot.impact();
 
@@ -382,3 +388,4 @@ public class TrustEngineService {
 	) {
 	}
 }
+

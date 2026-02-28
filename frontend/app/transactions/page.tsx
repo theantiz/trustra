@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { createTransaction, getTransactions } from "@/lib/api";
-import { Transaction } from "@/lib/types";
+import { createTransaction, getReceiverTrust, getTransactions } from "@/lib/api";
+import { Transaction, TrustScoreResponse } from "@/lib/types";
 
 export default function TransactionsPage() {
   const [senderId, setSenderId] = useState("");
@@ -12,15 +12,47 @@ export default function TransactionsPage() {
   const [queryUserId, setQueryUserId] = useState("");
   const [items, setItems] = useState<Transaction[]>([]);
   const [createdTx, setCreatedTx] = useState<Transaction | null>(null);
+  const [receiverTrust, setReceiverTrust] = useState<TrustScoreResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [checkingTrust, setCheckingTrust] = useState(false);
   const [showForms, setShowForms] = useState(true);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
 
+  const onCheckReceiverTrust = async () => {
+    const receiver = receiverId.trim();
+    if (!receiver) {
+      setError("Enter receiverId to check trust score");
+      return;
+    }
+
+    setCheckingTrust(true);
+    setError("");
+    setSuccess("");
+    try {
+      const trust = await getReceiverTrust(receiver);
+      setReceiverTrust(trust);
+      setSuccess(`Receiver ${trust.userId} trust score: ${trust.score}`);
+    } catch {
+      setReceiverTrust(null);
+      setError("Unable to fetch receiver trust score");
+    } finally {
+      setCheckingTrust(false);
+    }
+  };
+
   const onCreate = async () => {
     const value = Number(amount);
-    if (!senderId.trim() || !receiverId.trim() || Number.isNaN(value) || value <= 0) {
+    const trimmedSender = senderId.trim();
+    const trimmedReceiver = receiverId.trim();
+
+    if (!trimmedSender || !trimmedReceiver || Number.isNaN(value) || value <= 0) {
       setError("Provide valid senderId, receiverId, and amount");
+      return;
+    }
+
+    if (!receiverTrust || receiverTrust.userId !== trimmedReceiver) {
+      setError("Check receiver trust score before creating transaction");
       return;
     }
 
@@ -29,8 +61,8 @@ export default function TransactionsPage() {
     setSuccess("");
     try {
       const created = await createTransaction({
-        senderId: senderId.trim(),
-        receiverId: receiverId.trim(),
+        senderId: trimmedSender,
+        receiverId: trimmedReceiver,
         amount: value
       });
       setCreatedTx(created);
@@ -39,6 +71,7 @@ export default function TransactionsPage() {
       setReceiverId("");
       setAmount("");
       setQueryUserId("");
+      setReceiverTrust(null);
       setShowForms(false);
     } catch {
       setError("Unable to create transaction");
@@ -92,10 +125,33 @@ export default function TransactionsPage() {
                 />
                 <input
                   value={receiverId}
-                  onChange={(e) => setReceiverId(e.target.value)}
+                  onChange={(e) => {
+                    setReceiverId(e.target.value);
+                    setReceiverTrust(null);
+                  }}
                   placeholder="Receiver User ID"
                   className="rounded-lg border border-trust-border px-4 py-3 text-sm outline-none focus:border-gray-400"
                 />
+                <button
+                  type="button"
+                  onClick={() => void onCheckReceiverTrust()}
+                  disabled={checkingTrust || loading}
+                  className="rounded-lg border border-trust-border px-5 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50 disabled:opacity-70"
+                >
+                  {checkingTrust ? "Checking..." : "Check Receiver Trust Score"}
+                </button>
+                {receiverTrust && (
+                  <div className="rounded-lg border border-trust-border bg-gray-50 p-3 text-sm text-gray-800">
+                    <p>
+                      Receiver: <span className="font-medium">{receiverTrust.userId}</span>
+                    </p>
+                    <p>
+                      Trust Score: <span className="font-medium">{receiverTrust.score}</span>
+                    </p>
+                    <p>Success Rate: {receiverTrust.successRate}%</p>
+                    <p>Dispute Rate: {receiverTrust.disputeRate}%</p>
+                  </div>
+                )}
                 <input
                   type="number"
                   min="0"
@@ -107,7 +163,7 @@ export default function TransactionsPage() {
                 />
                 <button
                   type="submit"
-                  disabled={loading}
+                  disabled={loading || checkingTrust}
                   className="rounded-lg border border-trust-border bg-gray-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800 disabled:opacity-70"
                 >
                   Create Transaction
@@ -144,7 +200,9 @@ export default function TransactionsPage() {
           </>
         )}
 
-        {loading && <p className="mt-4 text-sm text-trust-muted">Loading...</p>}
+        {(loading || checkingTrust) && (
+          <p className="mt-4 text-sm text-trust-muted">Loading...</p>
+        )}
         {!!error && <p className="mt-4 text-sm text-red-700">{error}</p>}
         {!!success && <p className="mt-4 text-sm text-green-700">{success}</p>}
 
@@ -155,6 +213,7 @@ export default function TransactionsPage() {
               setShowForms(true);
               setItems([]);
               setCreatedTx(null);
+              setReceiverTrust(null);
               setError("");
               setSuccess("");
             }}
@@ -223,3 +282,4 @@ export default function TransactionsPage() {
     </main>
   );
 }
+
