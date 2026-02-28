@@ -1,0 +1,65 @@
+# Dependencies
+node_modules/
+frontend/node_modules/
+
+# Build output
+.next/
+frontend/.next/
+out/
+frontend/out/
+dist/
+build/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Environment files
+.env
+.env.*
+!.env.example
+frontend/.env
+frontend/.env.*
+!frontend/.env.example
+
+# TypeScript
+*.tsbuildinfo
+frontend/*.tsbuildinfo
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Test / coverage
+coverage/
+.nyc_output/
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Spring Boot / Java
+*.class
+*.jar
+*.war
+*.ear
+target/
+.gradle/
+gradle-app.setting
+!gradle-wrapper.jar
+
+# Maven
+.mvn/timing.properties
+dependency-reduced-pom.xml
+
+# Java tooling
+.classpath
+.project
+.settings/
+.factorypath
