@@ -23,7 +23,6 @@ import xyz.antiz.Trustra.repo.TrustExplanationRepo;
 import xyz.antiz.Trustra.repo.TrustScoreRepo;
 
 @Service
-@Transactional(readOnly = true)
 public class TrustEngineService {
 
 	private static final double SUCCESS_WEIGHT = 50.0;
@@ -57,10 +56,12 @@ public class TrustEngineService {
 		this.abuseFlagRepo = abuseFlagRepo;
 	}
 
+	@Transactional
 	public TrustScore get(String userId) {
 		return trustScoreRepo.findByUserId(userId).orElseGet(() -> recalculate(userId));
 	}
 
+	@Transactional(readOnly = true)
 	public List<TrustExplanationView> getExplanations(String userId) {
 		return trustExplanationRepo.findByUserIdOrderByCalculatedAtDescIdDesc(userId).stream()
 			.map(explanation -> new TrustExplanationView(
@@ -268,6 +269,7 @@ public class TrustEngineService {
 		return buildNetworkTrustSnapshot(userId).networkScore();
 	}
 
+	@Transactional(readOnly = true)
 	public List<NetworkCounterpartyView> getNetworkView(String userId) {
 		return buildNetworkTrustSnapshot(userId).counterparties();
 	}
@@ -388,4 +390,3 @@ public class TrustEngineService {
 	) {
 	}
 }
-
