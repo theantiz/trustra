@@ -1,4 +1,4 @@
-import { TrustLevel } from "@/lib/trust";
+import { TrustLevel } from "@/lib/types";
 
 type StatusBadgeProps = {
   level: TrustLevel;
