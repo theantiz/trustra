@@ -27,11 +27,11 @@ export default function NetworkPage() {
   };
 
   return (
-    <main className="min-h-screen px-6 py-10">
+    <main className="min-h-screen px-6 py-12 sm:px-8">
       <div className="mx-auto flex w-full max-w-[600px] flex-col items-center">
-        <h1 className="mb-6 text-center text-2xl font-semibold">Network Trust</h1>
+        <h1 className="mb-8 text-center text-2xl font-semibold">Network Trust</h1>
 
-        <section className="w-full rounded-xl border border-trust-border bg-white p-8">
+        <section className="w-full rounded-xl border border-trust-border bg-white p-10">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
             Lookup Counterparties
           </h2>
@@ -56,7 +56,7 @@ export default function NetworkPage() {
         {!!loading && <p className="mt-4 text-sm text-trust-muted">Loading...</p>}
         {!!error && <p className="mt-4 text-sm text-red-700">{error}</p>}
 
-        <section className="mt-6 w-full rounded-xl border border-trust-border bg-white p-8">
+        <section className="mt-8 w-full rounded-xl border border-trust-border bg-white p-10">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
             Result
           </h2>
@@ -76,7 +76,7 @@ export default function NetworkPage() {
           </div>
         </section>
 
-        <div className="mt-8 flex gap-4 text-sm">
+        <div className="mt-10 flex flex-wrap justify-center gap-5 text-sm">
           <Link href="/" className="text-gray-600 underline underline-offset-4">
             Home
           </Link>

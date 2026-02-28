@@ -72,11 +72,11 @@ export default function SimulatePage() {
   }, []);
 
   return (
-    <main className="min-h-screen px-6 py-10">
+    <main className="min-h-screen px-6 py-12 sm:px-8">
       <div className="mx-auto flex w-full max-w-[600px] flex-col items-center">
-        <h1 className="mb-6 text-center text-2xl font-semibold">Simulation</h1>
+        <h1 className="mb-8 text-center text-2xl font-semibold">Simulation</h1>
 
-        <section className="w-full rounded-xl border border-trust-border bg-white p-8">
+        <section className="w-full rounded-xl border border-trust-border bg-white p-10">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
             Controls
           </h2>
@@ -166,7 +166,7 @@ export default function SimulatePage() {
           </div>
         </section>
 
-        <section className="mt-6 w-full rounded-xl border border-trust-border bg-white p-8">
+        <section className="mt-8 w-full rounded-xl border border-trust-border bg-white p-10">
           <h2 className="mb-3 text-center text-sm font-semibold uppercase tracking-wide text-gray-700">
             Stats
           </h2>
@@ -189,7 +189,7 @@ export default function SimulatePage() {
           </div>
         </section>
 
-        <section className="mt-6 w-full rounded-xl border border-trust-border bg-white p-8">
+        <section className="mt-8 w-full rounded-xl border border-trust-border bg-white p-10">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
             View Trust
           </h2>
@@ -220,7 +220,7 @@ export default function SimulatePage() {
         {!!message && <p className="mt-4 text-sm text-green-700">{message}</p>}
         {!loading && trust && <TrustCard result={trust} explanations={explanations} />}
 
-        <div className="mt-8 flex gap-4 text-sm">
+        <div className="mt-10 flex flex-wrap justify-center gap-5 text-sm">
           <Link href="/" className="text-gray-600 underline underline-offset-4">
             Home
           </Link>

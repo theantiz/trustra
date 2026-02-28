@@ -5,7 +5,12 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "Trustra",
   description:
-    "Trustra is a real time trust scoring engine that evaluates the reliability of users in digital payment systems using behavioral signals, transaction history, and feedback patterns."
+    "Trustra is a real time trust scoring engine that evaluates the reliability of users in digital payment systems using behavioral signals, transaction history, and feedback patterns.",
+  icons: {
+    icon: "/favicon.svg",
+    shortcut: "/favicon.svg",
+    apple: "/favicon.svg"
+  }
 };
 
 export default function RootLayout({

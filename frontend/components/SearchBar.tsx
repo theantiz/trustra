@@ -14,14 +14,14 @@ export default function SearchBar({
   loading = false
 }: SearchBarProps) {
   return (
-    <div className="w-full rounded-xl border border-trust-border bg-white p-8">
-      <div className="flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+    <div className="w-full rounded-xl border border-trust-border bg-white p-10">
+      <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-center">
         <input
           type="text"
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder="Enter User ID"
-          className="w-full rounded-lg border border-trust-border px-4 py-3 text-gray-900 outline-none transition focus:border-gray-400 sm:max-w-xs"
+          className="w-full rounded-lg border border-trust-border px-4 py-3 text-gray-900 outline-none transition focus:border-gray-400 sm:max-w-sm"
         />
         <button
           type="button"

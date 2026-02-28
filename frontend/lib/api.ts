@@ -5,7 +5,8 @@ import {
   NetworkCounterparty,
   SimStats,
   Transaction,
-  TrustScoreResponse
+  TrustScoreResponse,
+  UserListItem
 } from "@/lib/types";
 
 const API_BASE_URL =
@@ -126,4 +127,17 @@ export async function getSimStats(): Promise<SimStats> {
 
 export async function getNetwork(userId: string): Promise<NetworkCounterparty[]> {
   return request<NetworkCounterparty[]>(`/api/network/${encodeURIComponent(userId)}`);
+}
+
+export async function getUsers(): Promise<UserListItem[]> {
+  const payload = await request<unknown>("/api/users");
+  if (Array.isArray(payload)) {
+    return payload as UserListItem[];
+  }
+  if (payload && typeof payload === "object") {
+    const obj = payload as Record<string, unknown>;
+    if (Array.isArray(obj.users)) return obj.users as UserListItem[];
+    if (Array.isArray(obj.content)) return obj.content as UserListItem[];
+  }
+  return [];
 }

@@ -93,10 +93,10 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-screen px-6 py-10">
+    <main className="min-h-screen px-6 py-12 sm:px-8">
       <div className="mx-auto flex w-full max-w-[600px] flex-col items-center">
         <h1 className="mb-2 text-center text-3xl font-semibold">Trustra</h1>
-        <p className="mb-6 text-center text-sm text-trust-muted">
+        <p className="mb-8 text-center text-sm text-trust-muted">
           Trustra is a real time trust scoring engine that evaluates the reliability
           of users in digital payment systems using behavioral signals, transaction
           history, and feedback patterns.
@@ -112,12 +112,12 @@ export default function HomePage() {
           type="button"
           onClick={runRecalculation}
           disabled={recalculating || !userId.trim()}
-          className="mt-4 rounded-lg border border-trust-border px-5 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-5 rounded-lg border border-trust-border px-5 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {recalculating ? "Calculating trust..." : "Recalculate Trust"}
         </button>
 
-        <div className="mt-4 flex w-full flex-wrap justify-center gap-3 text-xs">
+        <div className="mt-5 flex w-full flex-wrap justify-center gap-3 text-xs">
           <button
             type="button"
             onClick={runRecalculateAll}
@@ -141,7 +141,10 @@ export default function HomePage() {
           <TrustCard result={result} explanations={explanations} />
         )}
 
-        <div className="mt-8 flex flex-wrap justify-center gap-4 text-sm">
+        <div className="mt-10 flex flex-wrap justify-center gap-5 text-sm">
+          <Link href="/user-data" className="text-gray-600 underline underline-offset-4">
+            User Data
+          </Link>
           <Link href="/simulate" className="text-gray-600 underline underline-offset-4">
             Simulation
           </Link>

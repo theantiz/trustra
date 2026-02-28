@@ -9,7 +9,7 @@ export default function ExplanationItem({ item }: ExplanationItemProps) {
   const impactPrefix = item.contribution >= 0 ? "+" : "";
 
   return (
-    <div className="grid gap-2 border-b border-trust-border py-3 text-sm last:border-b-0">
+    <div className="grid gap-3 border-b border-trust-border py-4 text-sm last:border-b-0">
       <div className="flex items-start justify-between gap-4">
         <div className="text-left">
           <div className="font-medium text-gray-900">{item.factor}</div>

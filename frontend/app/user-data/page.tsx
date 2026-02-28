@@ -1,78 +1,83 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { getAbuseFlags } from "@/lib/api";
-import { AbuseFlag } from "@/lib/types";
+import { useEffect, useMemo, useState } from "react";
+import { getUsers } from "@/lib/api";
+import { UserListItem } from "@/lib/types";
 
-export default function AbusePage() {
-  const [userId, setUserId] = useState("");
-  const [items, setItems] = useState<AbuseFlag[]>([]);
+export default function UserDataPage() {
+  const [items, setItems] = useState<UserListItem[]>([]);
+  const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const onFetch = async () => {
-    if (!userId.trim()) return;
+  const loadUsers = async () => {
     setLoading(true);
     setError("");
     try {
-      const data = await getAbuseFlags(userId.trim());
+      const data = await getUsers();
       setItems(data);
     } catch {
-      setError("Unable to fetch abuse flags");
       setItems([]);
+      setError("Unable to fetch users list");
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    void loadUsers();
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return items;
+    return items.filter((item) => item.userId.toLowerCase().includes(q));
+  }, [items, query]);
+
   return (
     <main className="min-h-screen px-6 py-12 sm:px-8">
       <div className="mx-auto flex w-full max-w-[600px] flex-col items-center">
-        <h1 className="mb-8 text-center text-2xl font-semibold">Abuse Flags</h1>
+        <h1 className="mb-8 text-center text-2xl font-semibold">Users</h1>
 
         <section className="w-full rounded-xl border border-trust-border bg-white p-10">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
-            Lookup User Flags
-          </h2>
           <div className="flex flex-col gap-3 sm:flex-row">
             <input
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="User ID"
-              className="flex-1 rounded-lg border border-trust-border px-4 py-3 text-sm outline-none focus:border-gray-400"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search by User ID"
+              className="w-full rounded-lg border border-trust-border px-4 py-3 text-sm outline-none focus:border-gray-400"
             />
             <button
               type="button"
-              onClick={onFetch}
+              onClick={loadUsers}
               disabled={loading}
-              className="rounded-lg border border-trust-border px-5 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50 disabled:opacity-70"
+              className="rounded-lg border border-trust-border px-4 py-3 text-sm font-medium hover:bg-gray-50 disabled:opacity-60"
             >
-              Fetch Flags
+              Refresh
             </button>
           </div>
         </section>
 
-        {loading && <p className="mt-4 text-sm text-trust-muted">Loading...</p>}
+        {loading && <p className="mt-4 text-sm text-trust-muted">Loading users...</p>}
         {!!error && <p className="mt-4 text-sm text-red-700">{error}</p>}
 
         <section className="mt-8 w-full rounded-xl border border-trust-border bg-white p-10">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
-            Result
+            User List
           </h2>
           <div className="space-y-3">
-            {items.length === 0 && (
-              <p className="text-sm text-trust-muted">No abuse flags found.</p>
+            {filtered.length === 0 && (
+              <p className="text-sm text-trust-muted">No users found.</p>
             )}
-            {items.map((item) => (
+            {filtered.map((item, index) => (
               <div
-                key={item.id}
+                key={`${item.userId}-${index}`}
                 className="rounded-lg border border-trust-border p-3 text-sm"
               >
-                <p>Flag: {item.flagType}</p>
-                <p>Severity: {item.severity}</p>
-                <p>Details: {item.details}</p>
-                <p>Created: {new Date(item.createdAt).toLocaleString()}</p>
+                <p>User ID: {item.userId}</p>
+                <p>Score: {item.score ?? "-"}</p>
+                <p>Level: {item.level ?? "-"}</p>
               </div>
             ))}
           </div>
@@ -85,14 +90,17 @@ export default function AbusePage() {
           <Link href="/simulate" className="text-gray-600 underline underline-offset-4">
             Simulation
           </Link>
-          <Link href="/network" className="text-gray-600 underline underline-offset-4">
-            Network
-          </Link>
           <Link href="/transactions" className="text-gray-600 underline underline-offset-4">
             Transactions
           </Link>
           <Link href="/feedback" className="text-gray-600 underline underline-offset-4">
             Feedback
+          </Link>
+          <Link href="/abuse" className="text-gray-600 underline underline-offset-4">
+            Abuse
+          </Link>
+          <Link href="/network" className="text-gray-600 underline underline-offset-4">
+            Network
           </Link>
         </div>
       </div>

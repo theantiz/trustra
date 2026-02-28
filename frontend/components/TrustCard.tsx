@@ -27,8 +27,8 @@ export default function TrustCard({ result, explanations = [] }: TrustCardProps)
   const level = getTrustLevel(result.score);
 
   return (
-    <section className="mt-8 w-full rounded-2xl border border-trust-border bg-white p-8">
-      <div className="grid gap-6 md:grid-cols-[1.3fr_1fr]">
+    <section className="mt-10 w-full rounded-2xl border border-trust-border bg-white p-10">
+      <div className="grid gap-8 md:grid-cols-[1.3fr_1fr]">
         <div>
           <p className="text-sm text-trust-muted">Trust Score</p>
           <p className="mt-2 text-6xl font-semibold text-gray-900">{result.score}</p>
@@ -61,11 +61,11 @@ export default function TrustCard({ result, explanations = [] }: TrustCardProps)
         </div>
       </div>
 
-      <div className="mt-8 text-left">
+      <div className="mt-10 text-left">
         <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-gray-700">
           Explanation Trail
         </h2>
-        <div className="rounded-lg border border-trust-border px-4">
+        <div className="rounded-lg border border-trust-border px-5 py-1">
           {explanations.length === 0 && (
             <p className="py-4 text-sm text-trust-muted">No explanation data available.</p>
           )}
