@@ -63,11 +63,3 @@ export type SimulationUserSummary = {
   userId: string;
   score: number;
 };
-
-export type UserListItem = {
-  userId: string;
-  score?: number;
-  level?: string;
-  lastUpdatedAt?: string;
-  lastActivityAt?: string;
-};

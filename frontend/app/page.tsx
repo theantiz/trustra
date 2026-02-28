@@ -142,9 +142,6 @@ export default function HomePage() {
         )}
 
         <div className="mt-10 flex flex-wrap justify-center gap-5 text-sm">
-          <Link href="/user-data" className="text-gray-600 underline underline-offset-4">
-            User Data
-          </Link>
           <Link href="/simulate" className="text-gray-600 underline underline-offset-4">
             Simulation
           </Link>
