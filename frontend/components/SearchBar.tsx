@@ -14,7 +14,13 @@ export default function SearchBar({
   loading = false
 }: SearchBarProps) {
   return (
-    <div className="w-full rounded-xl border border-trust-border bg-white p-10">
+    <form
+      className="w-full rounded-xl border border-trust-border bg-white p-10"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit();
+      }}
+    >
       <div className="flex flex-col items-center gap-5 sm:flex-row sm:justify-center">
         <input
           type="text"
@@ -24,14 +30,13 @@ export default function SearchBar({
           className="w-full rounded-lg border border-trust-border px-4 py-3 text-gray-900 outline-none transition focus:border-gray-400 sm:max-w-sm"
         />
         <button
-          type="button"
-          onClick={onSubmit}
+          type="submit"
           disabled={loading}
           className="rounded-lg border border-trust-border bg-gray-900 px-5 py-3 text-sm font-medium text-white transition hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-70"
         >
           Check Trust
         </button>
       </div>
-    </div>
+    </form>
   );
 }

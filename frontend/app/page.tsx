@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import SearchBar from "@/components/SearchBar";
 import TrustCard from "@/components/TrustCard";
 import {
@@ -14,21 +14,15 @@ import Link from "next/link";
 
 export default function HomePage() {
   const [userId, setUserId] = useState("");
+  const [activeUserId, setActiveUserId] = useState("");
   const [result, setResult] = useState<TrustScoreResponse | null>(null);
   const [explanations, setExplanations] = useState<Explanation[]>([]);
   const [loading, setLoading] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [showForm, setShowForm] = useState(true);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
-
-  useEffect(() => {
-    if (!userId.trim()) {
-      setResult(null);
-      setExplanations([]);
-      setError("");
-    }
-  }, [userId]);
 
   const checkTrust = async () => {
     const trimmed = userId.trim();
@@ -43,6 +37,9 @@ export default function HomePage() {
       const explanationPayload = await getTrustExplanations(trimmed);
       setResult(payload);
       setExplanations(explanationPayload);
+      setActiveUserId(trimmed);
+      setUserId("");
+      setShowForm(false);
     } catch {
       setResult(null);
       setExplanations([]);
@@ -53,7 +50,7 @@ export default function HomePage() {
   };
 
   const runRecalculation = async () => {
-    const trimmed = userId.trim();
+    const trimmed = activeUserId || userId.trim();
     if (!trimmed) return;
 
     setRecalculating(true);
@@ -102,20 +99,40 @@ export default function HomePage() {
           history, and feedback patterns.
         </p>
 
-        <SearchBar
-          value={userId}
-          onChange={setUserId}
-          onSubmit={checkTrust}
-          loading={loading}
-        />
-        <button
-          type="button"
-          onClick={runRecalculation}
-          disabled={recalculating || !userId.trim()}
-          className="mt-5 rounded-lg border border-trust-border px-5 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
-        >
-          {recalculating ? "Calculating trust..." : "Recalculate Trust"}
-        </button>
+        {showForm && (
+          <SearchBar
+            value={userId}
+            onChange={setUserId}
+            onSubmit={checkTrust}
+            loading={loading}
+          />
+        )}
+        {!showForm && result && (
+          <div className="mt-5 flex flex-wrap justify-center gap-3">
+            <button
+              type="button"
+              onClick={runRecalculation}
+              disabled={recalculating}
+              className="rounded-lg border border-trust-border px-5 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {recalculating ? "Calculating trust..." : "Recalculate Trust"}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowForm(true);
+                setResult(null);
+                setExplanations([]);
+                setActiveUserId("");
+                setError("");
+                setMessage("");
+              }}
+              className="rounded-lg border border-trust-border px-5 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50"
+            >
+              Check Another User
+            </button>
+          </div>
+        )}
 
         <div className="mt-5 flex w-full flex-wrap justify-center gap-3 text-xs">
           <button
@@ -137,7 +154,7 @@ export default function HomePage() {
         {!loading && !recalculating && !bulkLoading && !!message && (
           <p className="mt-4 text-sm text-green-700">{message}</p>
         )}
-        {!loading && !recalculating && result && (
+        {!loading && !recalculating && result && !showForm && (
           <TrustCard result={result} explanations={explanations} />
         )}
 

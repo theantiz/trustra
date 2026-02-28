@@ -9,6 +9,7 @@ export default function NetworkPage() {
   const [userId, setUserId] = useState("");
   const [items, setItems] = useState<NetworkCounterparty[]>([]);
   const [loading, setLoading] = useState(false);
+  const [showForm, setShowForm] = useState(true);
   const [error, setError] = useState("");
 
   const onFetch = async () => {
@@ -18,6 +19,8 @@ export default function NetworkPage() {
     try {
       const data = await getNetwork(userId.trim());
       setItems(data);
+      setUserId("");
+      setShowForm(false);
     } catch {
       setItems([]);
       setError("Unable to fetch network trust data");
@@ -31,50 +34,73 @@ export default function NetworkPage() {
       <div className="mx-auto flex w-full max-w-[600px] flex-col items-center">
         <h1 className="mb-8 text-center text-2xl font-semibold">Network Trust</h1>
 
-        <section className="w-full rounded-xl border border-trust-border bg-white p-10">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
-            Lookup Counterparties
-          </h2>
-          <div className="flex gap-3">
-            <input
-              value={userId}
-              onChange={(e) => setUserId(e.target.value)}
-              placeholder="User ID"
-              className="w-full rounded-lg border border-trust-border px-4 py-3 text-sm outline-none focus:border-gray-400"
-            />
-            <button
-              type="button"
-              onClick={onFetch}
-              disabled={loading}
-              className="rounded-lg border border-trust-border px-4 py-3 text-sm font-medium hover:bg-gray-50 disabled:opacity-60"
+        {showForm && (
+          <section className="w-full rounded-xl border border-trust-border bg-white p-10">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
+              Lookup Counterparties
+            </h2>
+            <form
+              className="flex gap-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void onFetch();
+              }}
             >
-              Fetch
-            </button>
-          </div>
-        </section>
+              <input
+                value={userId}
+                onChange={(e) => setUserId(e.target.value)}
+                placeholder="User ID"
+                className="w-full rounded-lg border border-trust-border px-4 py-3 text-sm outline-none focus:border-gray-400"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="rounded-lg border border-trust-border px-4 py-3 text-sm font-medium hover:bg-gray-50 disabled:opacity-60"
+              >
+                Fetch
+              </button>
+            </form>
+          </section>
+        )}
 
         {!!loading && <p className="mt-4 text-sm text-trust-muted">Loading...</p>}
         {!!error && <p className="mt-4 text-sm text-red-700">{error}</p>}
 
-        <section className="mt-8 w-full rounded-xl border border-trust-border bg-white p-10">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
-            Result
-          </h2>
-          <div className="space-y-3">
-            {items.length === 0 && (
-              <p className="text-sm text-trust-muted">No network data found.</p>
-            )}
-            {items.map((item, index) => (
-              <div
-                key={`${item.userId}-${index}`}
-                className="rounded-lg border border-trust-border p-3 text-sm"
-              >
-                <p>User: {item.userId}</p>
-                <p>Score: {item.trustScore}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+        {!showForm && (
+          <button
+            type="button"
+            onClick={() => {
+              setShowForm(true);
+              setItems([]);
+              setError("");
+            }}
+            className="mt-6 rounded-lg border border-trust-border px-5 py-3 text-sm font-medium text-gray-800 transition hover:bg-gray-50"
+          >
+            Search Another User
+          </button>
+        )}
+
+        {!showForm && (
+          <section className="mt-8 w-full rounded-xl border border-trust-border bg-white p-10">
+            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-700">
+              Result
+            </h2>
+            <div className="space-y-3">
+              {items.length === 0 && (
+                <p className="text-sm text-trust-muted">No network data found.</p>
+              )}
+              {items.map((item, index) => (
+                <div
+                  key={`${item.userId}-${index}`}
+                  className="rounded-lg border border-trust-border p-3 text-sm"
+                >
+                  <p>User: {item.userId}</p>
+                  <p>Score: {item.trustScore}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         <div className="mt-10 flex flex-wrap justify-center gap-5 text-sm">
           <Link href="/" className="text-gray-600 underline underline-offset-4">
