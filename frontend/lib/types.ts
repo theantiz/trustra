@@ -1,18 +1,21 @@
 export type TrustLevel = "HIGH" | "MEDIUM" | "LOW";
 
 export type Explanation = {
-  label: string;
-  value: string;
-  impact: number;
+  factor: string;
+  metricValue: number;
+  contribution: number;
+  explanation: string;
+  calculatedAt: string;
 };
 
 export type TrustScoreResponse = {
   userId: string;
   score: number;
-  level: TrustLevel | string;
-  lastUpdatedAt?: string;
-  lastUpdated?: string;
-  explanations?: Explanation[];
+  successRate: number;
+  disputeRate: number;
+  averageRating: number;
+  calculatedAt: string;
+  lastActivityAt?: string;
 };
 
 export type Transaction = {
@@ -47,14 +50,16 @@ export type SimStats = {
   totalUsers: number;
   avgTrustScore: number;
   flaggedUsersCount: number;
-  highestTrustUser: string;
-  lowestTrustUser: string;
+  highestTrustUser: SimulationUserSummary | null;
+  lowestTrustUser: SimulationUserSummary | null;
 };
 
 export type NetworkCounterparty = {
-  counterpartyId?: string;
-  userId?: string;
-  trustScore?: number;
-  score?: number;
-  level?: string;
+  userId: string;
+  trustScore: number;
+};
+
+export type SimulationUserSummary = {
+  userId: string;
+  score: number;
 };

@@ -4,27 +4,28 @@ import { useEffect, useState } from "react";
 import SearchBar from "@/components/SearchBar";
 import TrustCard from "@/components/TrustCard";
 import {
-  clearTrustCache,
-  getDbHealth,
   getTrust,
+  getTrustExplanations,
   recalculateAllTrust,
   recalculateTrust
 } from "@/lib/api";
-import { TrustScoreResponse } from "@/lib/types";
+import { Explanation, TrustScoreResponse } from "@/lib/types";
 import Link from "next/link";
 
 export default function HomePage() {
   const [userId, setUserId] = useState("");
   const [result, setResult] = useState<TrustScoreResponse | null>(null);
+  const [explanations, setExplanations] = useState<Explanation[]>([]);
   const [loading, setLoading] = useState(false);
   const [recalculating, setRecalculating] = useState(false);
-  const [adminLoading, setAdminLoading] = useState(false);
+  const [bulkLoading, setBulkLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
   useEffect(() => {
     if (!userId.trim()) {
       setResult(null);
+      setExplanations([]);
       setError("");
     }
   }, [userId]);
@@ -39,9 +40,12 @@ export default function HomePage() {
 
     try {
       const payload = await getTrust(trimmed);
+      const explanationPayload = await getTrustExplanations(trimmed);
       setResult(payload);
+      setExplanations(explanationPayload);
     } catch {
       setResult(null);
+      setExplanations([]);
       setError("User not found or insufficient data");
     } finally {
       setLoading(false);
@@ -57,7 +61,9 @@ export default function HomePage() {
     setMessage("");
     try {
       const payload = await recalculateTrust(trimmed);
+      const explanationPayload = await getTrustExplanations(trimmed);
       setResult(payload);
+      setExplanations(explanationPayload);
       setMessage("Trust recalculated");
     } catch {
       setError("Unable to recalculate trust score");
@@ -67,49 +73,22 @@ export default function HomePage() {
   };
 
   const runRecalculateAll = async () => {
-    setAdminLoading(true);
+    setBulkLoading(true);
     setError("");
     setMessage("");
     try {
       await recalculateAllTrust();
       setMessage("Recalculation triggered for all users");
+      if (userId.trim()) {
+        const payload = await getTrust(userId.trim());
+        const explanationPayload = await getTrustExplanations(userId.trim());
+        setResult(payload);
+        setExplanations(explanationPayload);
+      }
     } catch {
       setError("Unable to trigger recalculation for all users");
     } finally {
-      setAdminLoading(false);
-    }
-  };
-
-  const runEvictCache = async () => {
-    const trimmed = userId.trim();
-    if (!trimmed) {
-      setError("Enter a user ID to evict cache");
-      return;
-    }
-    setAdminLoading(true);
-    setError("");
-    setMessage("");
-    try {
-      await clearTrustCache(trimmed);
-      setMessage(`Cache evicted for ${trimmed}`);
-    } catch {
-      setError("Unable to evict trust cache");
-    } finally {
-      setAdminLoading(false);
-    }
-  };
-
-  const runHealthCheck = async () => {
-    setAdminLoading(true);
-    setError("");
-    setMessage("");
-    try {
-      await getDbHealth();
-      setMessage("DB health endpoint responded successfully");
-    } catch {
-      setError("DB health check failed");
-    } finally {
-      setAdminLoading(false);
+      setBulkLoading(false);
     }
   };
 
@@ -142,39 +121,25 @@ export default function HomePage() {
           <button
             type="button"
             onClick={runRecalculateAll}
-            disabled={adminLoading}
+            disabled={bulkLoading}
             className="rounded-lg border border-trust-border px-3 py-2 text-gray-800 hover:bg-gray-50 disabled:opacity-60"
           >
             Recalculate All
           </button>
-          <button
-            type="button"
-            onClick={runEvictCache}
-            disabled={adminLoading}
-            className="rounded-lg border border-trust-border px-3 py-2 text-gray-800 hover:bg-gray-50 disabled:opacity-60"
-          >
-            Evict Cache (User)
-          </button>
-          <button
-            type="button"
-            onClick={runHealthCheck}
-            disabled={adminLoading}
-            className="rounded-lg border border-trust-border px-3 py-2 text-gray-800 hover:bg-gray-50 disabled:opacity-60"
-          >
-            DB Health Check
-          </button>
         </div>
 
-        {(loading || recalculating || adminLoading) && (
+        {(loading || recalculating || bulkLoading) && (
           <p className="mt-4 text-sm text-trust-muted">Calculating trust...</p>
         )}
         {!loading && !recalculating && error && (
           <p className="mt-4 text-sm text-red-700">{error}</p>
         )}
-        {!loading && !recalculating && !adminLoading && !!message && (
+        {!loading && !recalculating && !bulkLoading && !!message && (
           <p className="mt-4 text-sm text-green-700">{message}</p>
         )}
-        {!loading && !recalculating && result && <TrustCard result={result} />}
+        {!loading && !recalculating && result && (
+          <TrustCard result={result} explanations={explanations} />
+        )}
 
         <div className="mt-8 flex flex-wrap justify-center gap-4 text-sm">
           <Link href="/simulate" className="text-gray-600 underline underline-offset-4">

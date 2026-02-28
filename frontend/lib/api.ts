@@ -1,5 +1,6 @@
 import {
   AbuseFlag,
+  Explanation,
   Feedback,
   NetworkCounterparty,
   SimStats,
@@ -36,6 +37,12 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export async function getTrust(userId: string): Promise<TrustScoreResponse> {
   return request<TrustScoreResponse>(`/api/trust/${encodeURIComponent(userId)}`);
+}
+
+export async function getTrustExplanations(userId: string): Promise<Explanation[]> {
+  return request<Explanation[]>(
+    `/api/trust/${encodeURIComponent(userId)}/explanations`
+  );
 }
 
 export async function recalculateTrust(userId: string): Promise<TrustScoreResponse> {
@@ -83,25 +90,15 @@ export async function recalculateAllTrust(): Promise<void> {
   return request<void>("/api/trust/recalculate-all", { method: "POST" });
 }
 
-export async function clearTrustCache(userId: string): Promise<void> {
-  return request<void>(`/api/trust/${encodeURIComponent(userId)}/cache`, {
-    method: "DELETE"
-  });
-}
-
-export async function getDbHealth(): Promise<unknown> {
-  return request<unknown>("/api/health/db");
-}
-
-export async function simInit(users: number): Promise<unknown> {
-  return request<unknown>("/api/sim/init", {
+export async function simInit(users: number): Promise<SimStats> {
+  return request<SimStats>("/api/sim/init", {
     method: "POST",
     body: JSON.stringify({ users })
   });
 }
 
-export async function simNormal(steps: number): Promise<unknown> {
-  return request<unknown>("/api/sim/normal", {
+export async function simNormal(steps: number): Promise<SimStats> {
+  return request<SimStats>("/api/sim/normal", {
     method: "POST",
     body: JSON.stringify({ steps })
   });
@@ -110,15 +107,15 @@ export async function simNormal(steps: number): Promise<unknown> {
 export async function simMalicious(
   clusterSize: number,
   steps: number
-): Promise<unknown> {
-  return request<unknown>("/api/sim/malicious", {
+): Promise<SimStats> {
+  return request<SimStats>("/api/sim/malicious", {
     method: "POST",
     body: JSON.stringify({ clusterSize, steps })
   });
 }
 
-export async function simSpike(userId: string): Promise<unknown> {
-  return request<unknown>(`/api/sim/spike/${encodeURIComponent(userId)}`, {
+export async function simSpike(userId: string): Promise<SimStats> {
+  return request<SimStats>(`/api/sim/spike/${encodeURIComponent(userId)}`, {
     method: "POST"
   });
 }

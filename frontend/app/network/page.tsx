@@ -66,12 +66,11 @@ export default function NetworkPage() {
             )}
             {items.map((item, index) => (
               <div
-                key={`${item.counterpartyId ?? item.userId ?? "user"}-${index}`}
+                key={`${item.userId}-${index}`}
                 className="rounded-lg border border-trust-border p-3 text-sm"
               >
-                <p>User: {item.counterpartyId ?? item.userId ?? "-"}</p>
-                <p>Score: {item.trustScore ?? item.score ?? "-"}</p>
-                <p>Level: {item.level ?? "-"}</p>
+                <p>User: {item.userId}</p>
+                <p>Score: {item.trustScore}</p>
               </div>
             ))}
           </div>

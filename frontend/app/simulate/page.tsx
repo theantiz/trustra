@@ -5,12 +5,13 @@ import { useEffect, useState } from "react";
 import {
   getSimStats,
   getTrust,
+  getTrustExplanations,
   simInit,
   simMalicious,
   simNormal,
   simSpike
 } from "@/lib/api";
-import { SimStats, TrustScoreResponse } from "@/lib/types";
+import { Explanation, SimStats, TrustScoreResponse } from "@/lib/types";
 import TrustCard from "@/components/TrustCard";
 
 export default function SimulatePage() {
@@ -22,6 +23,7 @@ export default function SimulatePage() {
   const [viewUserId, setViewUserId] = useState("");
   const [stats, setStats] = useState<SimStats | null>(null);
   const [trust, setTrust] = useState<TrustScoreResponse | null>(null);
+  const [explanations, setExplanations] = useState<Explanation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -34,7 +36,9 @@ export default function SimulatePage() {
   const refreshTrust = async () => {
     if (!viewUserId.trim()) return;
     const payload = await getTrust(viewUserId.trim());
+    const explanationPayload = await getTrustExplanations(viewUserId.trim());
     setTrust(payload);
+    setExplanations(explanationPayload);
   };
 
   const run = async (action: () => Promise<unknown>, successMessage: string) => {
@@ -170,8 +174,18 @@ export default function SimulatePage() {
             <p>Total users: {stats?.totalUsers ?? "-"}</p>
             <p>Average trust score: {stats?.avgTrustScore ?? "-"}</p>
             <p>Flagged users: {stats?.flaggedUsersCount ?? "-"}</p>
-            <p>Highest trust user: {stats?.highestTrustUser ?? "-"}</p>
-            <p>Lowest trust user: {stats?.lowestTrustUser ?? "-"}</p>
+            <p>
+              Highest trust user:{" "}
+              {stats?.highestTrustUser
+                ? `${stats.highestTrustUser.userId} (${stats.highestTrustUser.score})`
+                : "-"}
+            </p>
+            <p>
+              Lowest trust user:{" "}
+              {stats?.lowestTrustUser
+                ? `${stats.lowestTrustUser.userId} (${stats.lowestTrustUser.score})`
+                : "-"}
+            </p>
           </div>
         </section>
 
@@ -204,7 +218,7 @@ export default function SimulatePage() {
         {!!loading && <p className="mt-4 text-sm text-trust-muted">Calculating trust...</p>}
         {!!error && <p className="mt-4 text-sm text-red-700">{error}</p>}
         {!!message && <p className="mt-4 text-sm text-green-700">{message}</p>}
-        {!loading && trust && <TrustCard result={trust} />}
+        {!loading && trust && <TrustCard result={trust} explanations={explanations} />}
 
         <div className="mt-8 flex gap-4 text-sm">
           <Link href="/" className="text-gray-600 underline underline-offset-4">
