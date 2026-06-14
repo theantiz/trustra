@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import SearchBar from "@/components/SearchBar";
 import TrustCard from "@/components/TrustCard";
-import { getTrust, getTrustExplanations } from "@/lib/api";
+import { API_BASE_URL, getTrust, getTrustExplanations } from "@/lib/api";
 import { Explanation, TrustScoreResponse } from "@/lib/types";
 
 export default function HomePage() {
@@ -41,11 +41,14 @@ export default function HomePage() {
   return (
     <main className="min-h-screen px-6 py-12 sm:px-8">
       <div className="mx-auto flex w-full max-w-[600px] flex-col items-center">
+        <div className="mb-4 rounded-full bg-gray-900 px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white">
+          Simulation Mode
+        </div>
         <h1 className="mb-2 text-center text-3xl font-semibold">Trustra</h1>
         <p className="mb-8 text-center text-sm text-trust-muted">
           Trustra is a real time trust scoring engine that evaluates the reliability
           of users in digital payment systems using behavioral signals, transaction
-          history, and feedback patterns.
+          history, and feedback patterns. This dashboard runs in a simulation environment.
         </p>
 
         {showForm && (
@@ -96,6 +99,14 @@ export default function HomePage() {
           <Link href="/network" className="text-gray-600 underline underline-offset-4">
             Network
           </Link>
+          <a
+            href={`${API_BASE_URL}/swagger-ui.html`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-600 underline underline-offset-4"
+          >
+            Swagger UI (Simulation)
+          </a>
         </div>
       </div>
     </main>

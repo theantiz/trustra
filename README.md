@@ -55,7 +55,6 @@ Trustra computes dynamic trust scores for users in a peer-to-peer transaction ne
 | Layer | Technology |
 |---|---|
 | Backend | Spring Boot, Spring Data JPA, Spring Security |
-| Auth | JWT |
 | Database | PostgreSQL |
 | API Docs | OpenAPI / Swagger |
 | Frontend | Next.js 15, React 19, Tailwind CSS |
@@ -82,12 +81,6 @@ Trustra/
 ```
 
 ## API Reference
-
-### Auth
-| Method | Endpoint | Description |
-|---|---|---|
-| POST | `/api/auth/register` | Register user |
-| POST | `/api/auth/login` | Login, returns JWT |
 
 ### Trust
 | Method | Endpoint | Description |

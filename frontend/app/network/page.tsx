@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { getNetwork } from "@/lib/api";
+import { API_BASE_URL, getNetwork } from "@/lib/api";
 import { NetworkCounterparty } from "@/lib/types";
 
 export default function NetworkPage() {
@@ -118,6 +118,14 @@ export default function NetworkPage() {
           <Link href="/abuse" className="text-gray-600 underline underline-offset-4">
             Abuse
           </Link>
+          <a
+            href={`${API_BASE_URL}/swagger-ui.html`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-600 underline underline-offset-4"
+          >
+            Swagger UI (Simulation)
+          </a>
         </div>
       </div>
     </main>

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
+  API_BASE_URL,
   getSimStats,
   getTrust,
   getTrustExplanations,
@@ -236,6 +237,14 @@ export default function SimulatePage() {
           <Link href="/network" className="text-gray-600 underline underline-offset-4">
             Network
           </Link>
+          <a
+            href={`${API_BASE_URL}/swagger-ui.html`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-600 underline underline-offset-4"
+          >
+            Swagger UI (Simulation)
+          </a>
         </div>
       </div>
     </main>

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { getAbuseFlags } from "@/lib/api";
+import { API_BASE_URL, getAbuseFlags } from "@/lib/api";
 import { AbuseFlag } from "@/lib/types";
 
 export default function AbusePage() {
@@ -120,6 +120,14 @@ export default function AbusePage() {
           <Link href="/feedback" className="text-gray-600 underline underline-offset-4">
             Feedback
           </Link>
+          <a
+            href={`${API_BASE_URL}/swagger-ui.html`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-600 underline underline-offset-4"
+          >
+            Swagger UI (Simulation)
+          </a>
         </div>
       </div>
     </main>

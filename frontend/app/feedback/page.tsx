@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { createFeedback } from "@/lib/api";
+import { API_BASE_URL, createFeedback } from "@/lib/api";
 import { Feedback } from "@/lib/types";
 
 const feedbackTypes = ["POSITIVE", "NEGATIVE", "SCAM_REPORT"];
@@ -171,6 +171,14 @@ export default function FeedbackPage() {
           <Link href="/abuse" className="text-gray-600 underline underline-offset-4">
             Abuse
           </Link>
+          <a
+            href={`${API_BASE_URL}/swagger-ui.html`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-gray-600 underline underline-offset-4"
+          >
+            Swagger UI (Simulation)
+          </a>
         </div>
       </div>
     </main>
