@@ -1,6 +1,4 @@
-# ─────────────────────────────────────────────
 # Stage 1: Build
-# ─────────────────────────────────────────────
 FROM eclipse-temurin:21-jdk-alpine AS builder
 
 WORKDIR /app
@@ -10,6 +8,9 @@ COPY mvnw .
 COPY .mvn .mvn
 COPY pom.xml .
 
+# Make mvnw executable (needed in many minimal images)
+RUN chmod +x mvnw
+
 # Download dependencies (cached unless pom.xml changes)
 RUN ./mvnw dependency:go-offline -q
 
@@ -17,9 +18,8 @@ RUN ./mvnw dependency:go-offline -q
 COPY src src
 RUN ./mvnw package -DskipTests -q
 
-# ─────────────────────────────────────────────
+
 # Stage 2: Runtime
-# ─────────────────────────────────────────────
 FROM eclipse-temurin:21-jre-alpine
 
 WORKDIR /app
@@ -33,13 +33,8 @@ COPY --from=builder /app/target/Trustra-*.jar app.jar
 # Switch to non-root user
 USER trustra
 
-# Expose the default Spring Boot port
+# Expose the default Spring Boot port (Render uses PORT env var for routing)
 EXPOSE 8080
 
-# Environment variable defaults (override at runtime)
-ENV SPRING_DATASOURCE_URL=jdbc:postgresql://db:5432/postgres \
-    SPRING_DATASOURCE_USERNAME=trustra \
-    SPRING_DATASOURCE_PASSWORD= \
-    TRUSTRA_FRONTEND_ORIGIN=http://localhost:3000
 
 ENTRYPOINT ["java", "-jar", "app.jar"]
