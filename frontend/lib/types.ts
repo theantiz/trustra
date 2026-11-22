@@ -9,8 +9,10 @@ export type Explanation = {
 };
 
 export type TrustScoreResponse = {
+  id?: number;
   userId: string;
   score: number;
+  trustLevel?: TrustLevel;
   successRate: number;
   disputeRate: number;
   averageRating: number;
@@ -18,11 +20,24 @@ export type TrustScoreResponse = {
   lastActivityAt?: string;
 };
 
+export type TrustScoreHistory = {
+  id: number;
+  userId: string;
+  score: number;
+  successRate: number;
+  disputeRate: number;
+  averageRating: number;
+  triggerReason: string;
+  recordedAt: string;
+};
+
 export type Transaction = {
   id: string;
+  idempotencyKey?: string;
   senderId: string;
   receiverId: string;
   amount: string | number;
+  currency?: string;
   status: "SUCCESS" | "FAILED" | "DISPUTE" | string;
   createdAt: string;
 };
@@ -44,6 +59,29 @@ export type AbuseFlag = {
   severity: "LOW" | "MED" | "HIGH" | string;
   details: string;
   createdAt: string;
+};
+
+export type ScoringConfig = {
+  successWeight: number;
+  disputeWeight: number;
+  feedbackWeight: number;
+  networkWeight: number;
+  maxInactivityPenalty: number;
+  negativeFeedbackPenalty: number;
+  scamReportPenalty: number;
+  spikePenalty: number;
+  fakeFeedbackPenalty: number;
+  clusterPenalty: number;
+  updatedAt?: string;
+  updatedBy?: string;
+};
+
+export type AuthResponse = {
+  token: string;
+  tokenType: string;
+  username: string;
+  roles: string[];
+  expiresInSeconds: number;
 };
 
 export type SimStats = {

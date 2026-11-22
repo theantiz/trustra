@@ -1,14 +1,21 @@
 import {
   AbuseFlag,
+  AuthResponse,
   Explanation,
   Feedback,
   NetworkCounterparty,
+  ScoringConfig,
   SimStats,
   Transaction,
+  TrustScoreHistory,
   TrustScoreResponse
 } from "@/lib/types";
 
-export const API_BASE_URL = "https://trustra-ixpk.onrender.com";
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  (typeof window !== "undefined" && window.location.hostname === "localhost"
+    ? "http://localhost:8080"
+    : "https://trustra-ixpk.onrender.com");
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(`${API_BASE_URL}${path}`, {
@@ -22,7 +29,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (!response.ok) {
     const text = await response.text();
-    throw new Error(text || `Request failed: ${response.status}`);
+    let message = `Request failed (${response.status})`;
+    try {
+      const parsed = JSON.parse(text);
+      message = parsed.message || parsed.error || message;
+    } catch {
+      if (text) message = text;
+    }
+    throw new Error(message);
   }
 
   const contentType = response.headers.get("content-type") || "";
@@ -49,14 +63,34 @@ export async function getTrustExplanations(userId: string): Promise<Explanation[
   );
 }
 
+export async function getTrustHistory(userId: string): Promise<TrustScoreHistory[]> {
+  return request<TrustScoreHistory[]>(
+    `/api/trust/${encodeURIComponent(userId)}/history`
+  );
+}
+
 export async function createTransaction(input: {
   senderId: string;
   receiverId: string;
   amount: number;
+  currency?: string;
+  idempotencyKey?: string;
 }): Promise<Transaction> {
+  const headers: Record<string, string> = {};
+  if (input.idempotencyKey) {
+    headers["Idempotency-Key"] = input.idempotencyKey;
+  }
+
   return request<Transaction>("/api/transactions", {
     method: "POST",
-    body: JSON.stringify(input)
+    headers,
+    body: JSON.stringify({
+      senderId: input.senderId,
+      receiverId: input.receiverId,
+      amount: input.amount,
+      currency: input.currency || "USD",
+      idempotencyKey: input.idempotencyKey
+    })
   });
 }
 
@@ -64,6 +98,18 @@ export async function getTransactions(userId: string): Promise<Transaction[]> {
   return request<Transaction[]>(
     `/api/transactions?userId=${encodeURIComponent(userId)}`
   );
+}
+
+export async function disputeTransaction(id: string): Promise<Transaction> {
+  return request<Transaction>(`/api/transactions/${encodeURIComponent(id)}/dispute`, {
+    method: "POST"
+  });
+}
+
+export async function refundTransaction(id: string): Promise<Transaction> {
+  return request<Transaction>(`/api/transactions/${encodeURIComponent(id)}/refund`, {
+    method: "POST"
+  });
 }
 
 export async function createFeedback(input: {
@@ -81,6 +127,51 @@ export async function createFeedback(input: {
 
 export async function getAbuseFlags(userId: string): Promise<AbuseFlag[]> {
   return request<AbuseFlag[]>(`/api/abuse/${encodeURIComponent(userId)}`);
+}
+
+export async function getAdminConfig(token?: string): Promise<ScoringConfig> {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return request<ScoringConfig>("/api/admin/config", { headers });
+}
+
+export async function updateAdminConfig(config: ScoringConfig, token?: string): Promise<ScoringConfig> {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  return request<ScoringConfig>("/api/admin/config", {
+    method: "PUT",
+    headers,
+    body: JSON.stringify(config)
+  });
+}
+
+export async function recalculateNetwork(token?: string): Promise<TrustScoreResponse[]> {
+  const headers: Record<string, string> = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+  try {
+    return await request<TrustScoreResponse[]>("/api/admin/recalculate", {
+      method: "POST",
+      headers
+    });
+  } catch {
+    return await request<TrustScoreResponse[]>("/api/trust/recalculate-all", {
+      method: "POST",
+      headers
+    });
+  }
+}
+
+export async function login(username: string, password: string): Promise<AuthResponse> {
+  return request<AuthResponse>("/api/auth/token", {
+    method: "POST",
+    body: JSON.stringify({ username, password })
+  });
 }
 
 export async function simInit(users: number): Promise<SimStats> {
@@ -120,4 +211,3 @@ export async function getSimStats(): Promise<SimStats> {
 export async function getNetwork(userId: string): Promise<NetworkCounterparty[]> {
   return request<NetworkCounterparty[]>(`/api/network/${encodeURIComponent(userId)}`);
 }
-

@@ -9,53 +9,93 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.CacheManager;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import xyz.antiz.Trustra.config.CacheConfig;
+import xyz.antiz.Trustra.dto.TrustScoreHistoryResponse;
 import xyz.antiz.Trustra.entity.AbuseFlag;
+import xyz.antiz.Trustra.entity.ScoringConfig;
 import xyz.antiz.Trustra.entity.Transaction;
 import xyz.antiz.Trustra.entity.TrustExplanation;
 import xyz.antiz.Trustra.entity.TrustScore;
+import xyz.antiz.Trustra.entity.TrustScoreHistory;
 import xyz.antiz.Trustra.repo.AbuseFlagRepo;
 import xyz.antiz.Trustra.repo.FeedbackRepo;
 import xyz.antiz.Trustra.repo.TransactionRepo;
 import xyz.antiz.Trustra.repo.TrustExplanationRepo;
+import xyz.antiz.Trustra.repo.TrustScoreHistoryRepo;
 import xyz.antiz.Trustra.repo.TrustScoreRepo;
+import xyz.antiz.Trustra.service.AbuseDetectionService;
+import xyz.antiz.Trustra.service.ScoringConfigService;
 
 @Service
 public class TrustEngineService {
 
-	private static final double SUCCESS_WEIGHT = 50.0;
-	private static final double DISPUTE_WEIGHT = 30.0;
-	private static final double FEEDBACK_WEIGHT = 20.0;
 	private static final double MAX_FEEDBACK_RATING = 5.0;
-	private static final double MAX_INACTIVITY_PENALTY = 20.0;
-	private static final double NEGATIVE_FEEDBACK_PENALTY = 2.0;
-	private static final double SCAM_REPORT_PENALTY = 5.0;
 
 	private final TransactionRepo transactionRepo;
 	private final FeedbackRepo feedbackRepo;
 	private final TrustScoreRepo trustScoreRepo;
 	private final TrustExplanationRepo trustExplanationRepo;
+	private final TrustScoreHistoryRepo trustScoreHistoryRepo;
 	private final AbuseDetectionService abuseDetectionService;
 	private final AbuseFlagRepo abuseFlagRepo;
+	private final ScoringConfigService scoringConfigService;
+	private final CacheManager cacheManager;
+
+	@Autowired
+	public TrustEngineService(
+		TransactionRepo transactionRepo,
+		FeedbackRepo feedbackRepo,
+		TrustScoreRepo trustScoreRepo,
+		TrustExplanationRepo trustExplanationRepo,
+		TrustScoreHistoryRepo trustScoreHistoryRepo,
+		AbuseDetectionService abuseDetectionService,
+		AbuseFlagRepo abuseFlagRepo,
+		ScoringConfigService scoringConfigService,
+		CacheManager cacheManager
+	) {
+		this.transactionRepo = transactionRepo;
+		this.feedbackRepo = feedbackRepo;
+		this.trustScoreRepo = trustScoreRepo;
+		this.trustExplanationRepo = trustExplanationRepo;
+		this.trustScoreHistoryRepo = trustScoreHistoryRepo;
+		this.abuseDetectionService = abuseDetectionService;
+		this.abuseFlagRepo = abuseFlagRepo;
+		this.scoringConfigService = scoringConfigService;
+		this.cacheManager = cacheManager;
+	}
 
 	public TrustEngineService(
 		TransactionRepo transactionRepo,
 		FeedbackRepo feedbackRepo,
 		TrustScoreRepo trustScoreRepo,
 		TrustExplanationRepo trustExplanationRepo,
+		TrustScoreHistoryRepo trustScoreHistoryRepo,
 		AbuseDetectionService abuseDetectionService,
-		AbuseFlagRepo abuseFlagRepo
+		AbuseFlagRepo abuseFlagRepo,
+		ScoringConfigService scoringConfigService
 	) {
-		this.transactionRepo = transactionRepo;
-		this.feedbackRepo = feedbackRepo;
-		this.trustScoreRepo = trustScoreRepo;
-		this.trustExplanationRepo = trustExplanationRepo;
-		this.abuseDetectionService = abuseDetectionService;
-		this.abuseFlagRepo = abuseFlagRepo;
+		this(
+			transactionRepo,
+			feedbackRepo,
+			trustScoreRepo,
+			trustExplanationRepo,
+			trustScoreHistoryRepo,
+			abuseDetectionService,
+			abuseFlagRepo,
+			scoringConfigService,
+			null
+		);
 	}
 
+	@Cacheable(value = CacheConfig.TRUST_SCORES_CACHE, key = "#userId")
 	@Transactional
 	public TrustScore get(String userId) {
 		return trustScoreRepo.findByUserId(userId).orElseGet(() -> recalculate(userId));
@@ -74,6 +114,23 @@ public class TrustEngineService {
 			.toList();
 	}
 
+	@Transactional(readOnly = true)
+	public List<TrustScoreHistoryResponse> getHistory(String userId) {
+		return trustScoreHistoryRepo.findByUserIdOrderByRecordedAtDesc(userId).stream()
+			.map(history -> new TrustScoreHistoryResponse(
+				history.getId(),
+				history.getUserId(),
+				history.getScore(),
+				history.getSuccessRate(),
+				history.getDisputeRate(),
+				history.getAverageRating(),
+				history.getTriggerReason(),
+				history.getRecordedAt()
+			))
+			.toList();
+	}
+
+	@CacheEvict(value = CacheConfig.TRUST_SCORES_CACHE, key = "#userId")
 	@Transactional
 	public void touchActivity(String userId, Instant activityAt) {
 		TrustScore trustScore = trustScoreRepo.findByUserId(userId).orElseGet(TrustScore::new);
@@ -86,17 +143,29 @@ public class TrustEngineService {
 			trustScore.setLastActivityAt(activityAt);
 		}
 		trustScoreRepo.save(trustScore);
+		evictCache(userId);
 	}
 
+	@CacheEvict(value = CacheConfig.TRUST_SCORES_CACHE, allEntries = true)
 	@Transactional
 	public List<TrustScore> recalculateAll() {
+		clearCache();
 		return trustScoreRepo.findAll().stream()
-			.map(trustScore -> recalculate(trustScore.getUserId()))
+			.map(trustScore -> recalculate(trustScore.getUserId(), "SCHEDULED_RECALCULATION"))
 			.toList();
 	}
 
+	@CachePut(value = CacheConfig.TRUST_SCORES_CACHE, key = "#userId")
 	@Transactional
 	public TrustScore recalculate(String userId) {
+		return recalculate(userId, "MANUAL_RECALCULATION");
+	}
+
+	@CachePut(value = CacheConfig.TRUST_SCORES_CACHE, key = "#userId")
+	@Transactional
+	public TrustScore recalculate(String userId, String triggerReason) {
+		ScoringConfig config = scoringConfigService.getConfig();
+
 		long totalTransactions = transactionRepo.countByReceiverId(userId);
 		long successfulTransactions = transactionRepo.countByReceiverIdAndStatus(userId, "SUCCESS");
 		long disputedTransactions = transactionRepo.countByReceiverIdAndStatus(userId, "DISPUTE");
@@ -123,15 +192,15 @@ public class TrustEngineService {
 			: (totalTransactions == 0 ? 0.0 : ((double) disputedTransactions / totalTransactions) * 100.0);
 		double averageRating = preserveBaseline ? existingAverageRating : calculatedAverageRating;
 
-		double successContribution = totalTransactions == 0 ? 0.0 : (successRate / 100.0) * SUCCESS_WEIGHT;
-		double disputeContribution = totalTransactions == 0 ? 0.0 : ((100.0 - disputeRate) / 100.0) * DISPUTE_WEIGHT;
-		double feedbackContribution = totalFeedback == 0 ? 0.0 : (averageRating / MAX_FEEDBACK_RATING) * FEEDBACK_WEIGHT;
-		double negativeFeedbackPenalty = negativeFeedbackCount * NEGATIVE_FEEDBACK_PENALTY;
-		double scamReportPenalty = scamReportCount * SCAM_REPORT_PENALTY;
+		double successContribution = totalTransactions == 0 ? 0.0 : (successRate / 100.0) * config.getSuccessWeight();
+		double disputeContribution = totalTransactions == 0 ? 0.0 : ((100.0 - disputeRate) / 100.0) * config.getDisputeWeight();
+		double feedbackContribution = totalFeedback == 0 ? 0.0 : (averageRating / MAX_FEEDBACK_RATING) * config.getFeedbackWeight();
+		double negativeFeedbackPenalty = negativeFeedbackCount * config.getNegativeFeedbackPenalty();
+		double scamReportPenalty = scamReportCount * config.getScamReportPenalty();
 		double behavioralScore = preserveBaseline
 			? existingScore
 			: successContribution + disputeContribution + feedbackContribution - negativeFeedbackPenalty - scamReportPenalty;
-		NetworkTrustSnapshot networkTrustSnapshot = buildNetworkTrustSnapshot(userId);
+		NetworkTrustSnapshot networkTrustSnapshot = buildNetworkTrustSnapshot(userId, config.getNetworkWeight());
 		double networkImpact = preserveBaseline ? 0.0 : networkTrustSnapshot.impact();
 
 		trustScore.setSuccessRate(round(successRate));
@@ -144,11 +213,11 @@ public class TrustEngineService {
 		if (lastActivityAt != null) {
 			inactivityDays = Math.max(0, ChronoUnit.DAYS.between(lastActivityAt, Instant.now()));
 			if (inactivityDays > 30) {
-				inactivityPenalty = Math.min(MAX_INACTIVITY_PENALTY, inactivityDays / 10.0);
+				inactivityPenalty = Math.min(config.getMaxInactivityPenalty(), inactivityDays / 10.0);
 			}
 		}
 
-		double totalPenalty = abuseFlags.stream().mapToDouble(this::penaltyFor).sum();
+		double totalPenalty = abuseFlags.stream().mapToDouble(flag -> penaltyFor(flag, config)).sum();
 		double finalScore = behavioralScore + networkImpact - totalPenalty - inactivityPenalty;
 		trustScore.setScore(round(clamp(finalScore)));
 
@@ -158,6 +227,17 @@ public class TrustEngineService {
 		if (!abuseFlags.isEmpty()) {
 			abuseFlagRepo.saveAll(abuseFlags);
 		}
+
+		// Record audit trail in TrustScoreHistory
+		TrustScoreHistory history = new TrustScoreHistory();
+		history.setUserId(userId);
+		history.setScore(savedTrustScore.getScore());
+		history.setSuccessRate(savedTrustScore.getSuccessRate());
+		history.setDisputeRate(savedTrustScore.getDisputeRate());
+		history.setAverageRating(savedTrustScore.getAverageRating());
+		history.setTriggerReason(triggerReason != null ? triggerReason : "MANUAL_RECALCULATION");
+		history.setRecordedAt(Instant.now());
+		trustScoreHistoryRepo.save(history);
 
 		List<TrustExplanation> explanations = new ArrayList<>();
 		if (preserveBaseline) {
@@ -231,7 +311,7 @@ public class TrustEngineService {
 			);
 		}
 		for (AbuseFlag abuseFlag : abuseFlags) {
-			double penalty = penaltyFor(abuseFlag);
+			double penalty = penaltyFor(abuseFlag, config);
 			explanations.add(
 				buildExplanation(
 					savedTrustScore,
@@ -262,16 +342,17 @@ public class TrustEngineService {
 		}
 
 		trustExplanationRepo.saveAll(explanations);
+		updateCache(userId, savedTrustScore);
 		return savedTrustScore;
 	}
 
 	public double calculateNetworkScore(String userId) {
-		return buildNetworkTrustSnapshot(userId).networkScore();
+		return buildNetworkTrustSnapshot(userId, scoringConfigService.getConfig().getNetworkWeight()).networkScore();
 	}
 
 	@Transactional(readOnly = true)
 	public List<NetworkCounterpartyView> getNetworkView(String userId) {
-		return buildNetworkTrustSnapshot(userId).counterparties();
+		return buildNetworkTrustSnapshot(userId, scoringConfigService.getConfig().getNetworkWeight()).counterparties();
 	}
 
 	private boolean shouldPreserveBaseline(
@@ -287,7 +368,7 @@ public class TrustEngineService {
 			&& trustScore.getScore() != null;
 	}
 
-	private NetworkTrustSnapshot buildNetworkTrustSnapshot(String userId) {
+	private NetworkTrustSnapshot buildNetworkTrustSnapshot(String userId, double networkWeight) {
 		List<Transaction> recentTransactions = transactionRepo.findTop100BySenderIdOrReceiverIdOrderByCreatedAtDesc(userId, userId);
 		if (recentTransactions.isEmpty()) {
 			return new NetworkTrustSnapshot(0.5, 50.0, 0.0, List.of());
@@ -323,15 +404,15 @@ public class TrustEngineService {
 
 		double averagePartnerScore = totalScore / counterparties.size();
 		double networkScore = clamp01(averagePartnerScore / 100.0);
-		double impact = round((networkScore - 0.5) * 30.0);
+		double impact = round((networkScore - 0.5) * networkWeight);
 		return new NetworkTrustSnapshot(networkScore, round(averagePartnerScore), impact, counterparties);
 	}
 
-	private double penaltyFor(AbuseFlag abuseFlag) {
+	private double penaltyFor(AbuseFlag abuseFlag, ScoringConfig config) {
 		return switch (abuseFlag.getFlagType()) {
-			case "SPIKE" -> 8.0;
-			case "FAKE_FEEDBACK" -> 12.0;
-			case "CLUSTER" -> 15.0;
+			case "SPIKE" -> config.getSpikePenalty();
+			case "FAKE_FEEDBACK" -> config.getFakeFeedbackPenalty();
+			case "CLUSTER" -> config.getClusterPenalty();
 			default -> 0.0;
 		};
 	}
@@ -368,6 +449,33 @@ public class TrustEngineService {
 
 	private double round(double value) {
 		return Math.round(value * 100.0) / 100.0;
+	}
+
+	private void updateCache(String userId, TrustScore trustScore) {
+		if (cacheManager != null) {
+			var cache = cacheManager.getCache(CacheConfig.TRUST_SCORES_CACHE);
+			if (cache != null) {
+				cache.put(userId, trustScore);
+			}
+		}
+	}
+
+	private void evictCache(String userId) {
+		if (cacheManager != null) {
+			var cache = cacheManager.getCache(CacheConfig.TRUST_SCORES_CACHE);
+			if (cache != null) {
+				cache.evict(userId);
+			}
+		}
+	}
+
+	private void clearCache() {
+		if (cacheManager != null) {
+			var cache = cacheManager.getCache(CacheConfig.TRUST_SCORES_CACHE);
+			if (cache != null) {
+				cache.clear();
+			}
+		}
 	}
 
 	public record NetworkCounterpartyView(String userId, double trustScore) {

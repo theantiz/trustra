@@ -31,15 +31,16 @@ public class FeedbackController {
 	@PostMapping
 	public Feedback create(@Valid @RequestBody CreateFeedbackRequest request) {
 		Feedback feedback = new Feedback();
-		feedback.setFromUserId(request.fromUserId());
-		feedback.setToUserId(request.toUserId());
+		feedback.setFromUserId(request.fromUserId().trim());
+		feedback.setToUserId(request.toUserId().trim());
 		feedback.setRating(request.rating());
 		feedback.setType(request.type().trim().toUpperCase(Locale.ROOT));
 		feedback.setComment(request.comment());
 
 		Feedback savedFeedback = feedbackRepo.save(feedback);
-		trustEngineService.touchActivity(savedFeedback.getToUserId(), savedFeedback.getCreatedAt() == null ? Instant.now() : savedFeedback.getCreatedAt());
-		trustEngineService.recalculate(savedFeedback.getToUserId());
+		Instant activityTime = savedFeedback.getCreatedAt() == null ? Instant.now() : savedFeedback.getCreatedAt();
+		trustEngineService.touchActivity(savedFeedback.getToUserId(), activityTime);
+		trustEngineService.recalculate(savedFeedback.getToUserId(), "FEEDBACK_EVENT");
 		return savedFeedback;
 	}
 
